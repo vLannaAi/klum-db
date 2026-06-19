@@ -223,6 +223,23 @@ export {
   DataResidencyError,
 } from '@noy-db/hub/kernel'
 
+// ─── Multivault bundle (NDBM) — relocated from @noy-db/hub ────────────────────
+export {
+  encodeMultiBundle,
+  decodeMultiBundle,
+  writeMultiVaultBundle,
+  readNoydbBundleManifest,
+  readMultiVaultBundleCompartment,
+  NOYDB_MULTI_BUNDLE_MAGIC,
+  NOYDB_MULTI_BUNDLE_PREFIX_BYTES,
+  NOYDB_MULTI_BUNDLE_VERSION,
+} from './bundle/multi-bundle.js'
+export type {
+  CompartmentManifest,
+  MultiBundleManifest,
+  MultiVaultCompartmentInput,
+} from './bundle/multi-bundle.js'
+
 // ─── FR-2: Cross-vault FK-closure extraction ──────────────────────────────────
 export {
   walkCrossVaultClosure,
