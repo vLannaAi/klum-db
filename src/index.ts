@@ -223,7 +223,7 @@ export {
   DataResidencyError,
 } from '@noy-db/hub/kernel'
 
-// Multi-compartment (NDBM) multivault bundle — relocated from @noy-db/hub.
+// ─── Multivault bundle (NDBM) — relocated from @noy-db/hub ────────────────────
 export {
   encodeMultiBundle,
   decodeMultiBundle,

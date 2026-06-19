@@ -1,4 +1,3 @@
-// src/bundle/uint32.ts
 /**
  * Big-endian uint32 codec for the NDBM outer container's length fields.
  * The multi-bundle framing is klum's own format; these are local so noy-db
