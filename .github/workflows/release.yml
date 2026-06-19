@@ -1,0 +1,260 @@
+name: Release to npm
+
+# Strict release pipeline for the @klum-db/lobby standalone package.
+#
+# Triggered on GitHub Release `published`. Runs the full verification
+# gate (install + build + lint + typecheck + test) on a clean checkout
+# at the release tag, and only publishes if every gate passes.
+#
+# Publishes with `--provenance` so the npm registry attests a
+# verifiable cryptographic link between the tarball and this workflow
+# run (supply-chain integrity). Requires `id-token: write` permission
+# on the job.
+#
+# ── npm dist-tag routing ─────────────────────────────────────────────
+#
+#   • `latest` — the default install (`pnpm add @klum-db/lobby`). Used
+#     for stable themed releases.
+#   • `next`   — opt-in early-adopter channel (`pnpm add @klum-db/lobby@next`).
+#
+# Routing rules:
+#   - `release` event with `prerelease: true` (the "Set as a pre-release"
+#     checkbox on the GitHub Release form) → publishes with `--tag next`.
+#   - `release` event with `prerelease: false` → publishes with `--tag latest`.
+#   - Manual `workflow_dispatch` → uses the `tag` input (default `latest`).
+#
+# Both paths preserve `--provenance` and the strict verification gate.
+# The chosen tag is echoed to the workflow log + the run summary before
+# any publish runs, so an unintended target shows up immediately.
+#
+# Setup required (one-time, in repo Settings → Secrets and variables):
+#   - NPM_TOKEN (npm automation token with publish access to @klum-db/*)
+#   - GitHub Actions must have "Read and write permissions" under
+#     Settings → Actions → General → Workflow permissions
+#
+# Manual dispatch is available for first-publish or re-publish debugging;
+# it requires typing PUBLISH into the confirm field so accidental triggers
+# can't publish by mistake. The `tag` input lets a maintainer override
+# the dist-tag without touching this file.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PUBLISH to confirm manual trigger'
+        required: true
+        default: ''
+      tag:
+        description: 'npm dist-tag (latest | next | canary | rc | beta | alpha)'
+        required: false
+        default: 'latest'
+  push:
+    branches: [main]
+    paths: ['.github/workflows/release.yml']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Gate 1: strict verification ──────────────────────────────────────
+  verify:
+    name: Verify (strict)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event.inputs.confirm == 'PUBLISH' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Verify package.json version matches release tag
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "❌ @klum-db/lobby version ($PKG_VERSION) does not match release tag ($VERSION)"
+            exit 1
+          fi
+          echo "✅ @klum-db/lobby@$PKG_VERSION matches release tag v$VERSION"
+
+  # ── Gate 2: publish with provenance ──────────────────────────────────
+  #
+  # Explicit event guard: publish only runs on:
+  #   - a `release` event (someone created a GitHub Release), or
+  #   - a `workflow_dispatch` with `confirm: PUBLISH` typed in.
+  #
+  # The `verify` job above also runs on `push` to main when this file
+  # changes (so workflow edits get tested), but the publish step
+  # MUST NOT run on that path — otherwise pushing a workflow edit
+  # could auto-publish to npm without explicit confirmation.
+  publish:
+    name: Publish to npm
+    needs: verify
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'PUBLISH')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required for npm --provenance
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # Resolve the npm dist-tag for this run. Computed once + echoed
+      # to the run summary so an unintended target shows up before any
+      # publish runs. Allowlist guards against typos in workflow_dispatch
+      # input — the publish step refuses to run with an unknown tag.
+      - name: Resolve npm dist-tag
+        id: dist_tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+              TAG="next"
+              REASON="release event, prerelease=true"
+            else
+              TAG="latest"
+              REASON="release event, prerelease=false"
+            fi
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+            REASON="workflow_dispatch tag input"
+          else
+            TAG="latest"
+            REASON="default"
+          fi
+
+          case "$TAG" in
+            latest|next|canary|rc|beta|alpha) ;;
+            *)
+              echo "❌ Refusing to publish: tag '$TAG' is not in the allowlist (latest|next|canary|rc|beta|alpha)."
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "### npm dist-tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Reason:** $REASON" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TAG" = "latest" ]; then
+            echo "Consumers run \`pnpm add @klum-db/lobby\` (default install)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Consumers run \`pnpm add @klum-db/lobby@$TAG\` (opt-in channel)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Check which npm account the token belongs to. If this step fails,
+      # the token is invalid; if it shows the wrong user, the user's account
+      # doesn't own @klum-db/*.
+      - name: Check npm auth (whoami)
+        run: |
+          WHOAMI=$(npm whoami 2>&1) && echo "npm user: $WHOAMI" || echo "npm whoami failed: $WHOAMI"
+          echo "npm user: ${WHOAMI:-failed}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
+
+      # Single-package publish. `--no-git-checks` because the publish job
+      # checks out a tag, not a branch — pnpm's default branch-clean check
+      # would fail otherwise. `--provenance` requires id-token: write
+      # (granted on the job above). pnpm skips a version already on the
+      # registry, so re-runs are safe.
+      - name: Publish @klum-db/lobby
+        run: |
+          set -o pipefail
+          echo "Publishing @klum-db/lobby with --tag ${{ steps.dist_tag.outputs.tag }}"
+          pnpm publish \
+            --access public \
+            --tag '${{ steps.dist_tag.outputs.tag }}' \
+            --no-git-checks \
+            --provenance 2>&1 | tee /tmp/publish.log
+          EXIT=${PIPESTATUS[0]}
+          if [ "$EXIT" -ne 0 ]; then
+            echo "### Publish failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat /tmp/publish.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$EXIT"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summarise
+        run: |
+          echo "### Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Release: \`${{ github.event.release.tag_name || github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- npm dist-tag: \`${{ steps.dist_tag.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Provenance: enabled (look for the ✓ on https://www.npmjs.com/package/@klum-db/lobby)" >> "$GITHUB_STEP_SUMMARY"
