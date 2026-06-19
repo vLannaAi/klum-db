@@ -12,12 +12,10 @@ import {
   describeCrossVaultExtraction,
   type CrossVaultRef,
 } from '../src/interchange/extract-cross-vault.js'
-import {
-  readNoydbBundleManifest,
-  readMultiVaultBundleCompartment,
-  adoptPartition,
-  createOwnerOnAdoptedPartition,
-} from '@noy-db/hub/bundle'
+import { adoptPartition, createOwnerOnAdoptedPartition } from '@noy-db/hub/bundle'
+// NDBM multivault manifest readers moved to klum in WS-1 — import from our own module,
+// not @noy-db/hub (which no longer ships them as of 0.2.0-pre.25).
+import { readNoydbBundleManifest, readMultiVaultBundleCompartment } from '../src/bundle/multi-bundle.js'
 import type { Noydb } from '@noy-db/hub'
 
 // ─── Fixture ──────────────────────────────────────────────────────────────────

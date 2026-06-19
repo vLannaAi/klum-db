@@ -1,6 +1,6 @@
 {
   "name": "@klum-db/lobby",
-  "version": "0.2.0-pre.27",
+  "version": "0.2.0-pre.28",
   "description": "klum-db Lobby — orchestrates a group of sovereign noy-db vaults (federation, interchange, custody). The outward framework to noy-db's inward vault.",
   "license": "MIT",
   "author": "vLannaAi <vicio@lanna.ai>",
@@ -29,6 +29,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "klum": "./dist/bin/klum.js"
+  },
   "files": [
     "dist",
     "README.md",
@@ -45,14 +48,19 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@noy-db/as-xlsx": "^0.2.0-pre.24",
-    "@noy-db/hub": "^0.2.0-pre.24"
+    "@noy-db/as-xlsx": "^0.2.0-pre.26",
+    "@noy-db/hub": "^0.2.0-pre.26",
+    "@noy-db/in-devtools": "^0.2.0-pre.26",
+    "@noy-db/to-meter": "^0.2.0-pre.26"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
-    "@noy-db/as-xlsx": "0.2.0-pre.24",
-    "@noy-db/hub": "0.2.0-pre.24",
-    "@noy-db/to-memory": "0.2.0-pre.24",
+    "@noy-db/as-xlsx": "0.2.0-pre.26",
+    "@noy-db/as-zip": "0.2.0-pre.26",
+    "@noy-db/hub": "0.2.0-pre.26",
+    "@noy-db/in-devtools": "0.2.0-pre.26",
+    "@noy-db/to-memory": "0.2.0-pre.26",
+    "@noy-db/to-meter": "0.2.0-pre.26",
     "@types/node": "^22.0.0",
     "eslint": "^9.18.0",
     "tsup": "^8.4.0",

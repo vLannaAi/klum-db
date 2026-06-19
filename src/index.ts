@@ -212,6 +212,11 @@ export type {
 } from './federation/index.js'
 export type { GroupedRow as CrossVaultGroupedRow } from './federation/index.js'
 
+// Federation tooling (WS-3): drive the @noy-db dev-tools / meter over a vault group.
+export { groupInspector } from './federation/group-inspector.js'
+export { meterGroup } from './federation/meter-group.js'
+export type { GroupMeterReport, GroupShardMetrics } from './federation/meter-group.js'
+
 // Federation error classes as runtime values — so consumers catch them from
 // @klum-db/lobby directly, not via @noy-db/hub's internal /kernel surface.
 export {
