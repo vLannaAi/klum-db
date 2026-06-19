@@ -7,16 +7,17 @@ import type { Vault } from '@noy-db/hub'
 import {
   walkClosure,
   extractPartition,
-  encodeMultiBundle,
   readNoydbBundleHeader,
-  NOYDB_MULTI_BUNDLE_VERSION,
-  generateULID,
   describeExtraction,
-  type MultiBundleManifest,
-  type CompartmentManifest,
   type ExtractionPreview,
 } from '@noy-db/hub/bundle'
-import { sha256Hex } from '@noy-db/hub/kernel'
+import { sha256Hex, generateULID } from '@noy-db/hub/kernel'
+import {
+  encodeMultiBundle,
+  NOYDB_MULTI_BUNDLE_VERSION,
+  type MultiBundleManifest,
+  type CompartmentManifest,
+} from '../bundle/multi-bundle.js'
 
 /** A denormalized cross-vault FK edge (hub refuses these as native refs). */
 export interface CrossVaultRef {
