@@ -67,7 +67,7 @@ lobby.withVaultTemplate('client', { version: 1, configure: v => v.collection('in
 const group = await lobby.openVaultGroup('clients', { registry, sharding: { keyOf, vaultTemplate: 'client', autoCreate: true } })
 await group.shard('acme-co').collection('invoices').put('i1', { id: 'i1', total: '1200.00' })
 const all = await group.queryAcross(/* … */)          // fan-out read across shards
-await group.migrateFleet({ batchSize: 4 })             // resumable, registry-tracked
+await group.rolloutSchema({ batchSize: 4 })             // resumable, registry-tracked
 ```
 
 ### 2 · Interchange — move data between vaults, safely
