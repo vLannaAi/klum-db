@@ -21,10 +21,12 @@ architecture guard).
 ## Dependencies
 
 This package depends on the published `@noy-db/*` packages via the peer-dep
-range `^0.2.0-pre.24`:
+range `^0.2.0-pre.26`:
 
 - `@noy-db/hub` (peer + dev)
 - `@noy-db/as-xlsx` (peer + dev)
+- `@noy-db/in-devtools`, `@noy-db/to-meter` (**optional** peers — only for the
+  `groupInspector` / `meterGroup` / `klum` CLI group tooling)
 - `@noy-db/to-memory` (dev/test only)
 
 Versioning is **independent** of noy-db: this repo bumps its own
