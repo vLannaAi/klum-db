@@ -208,7 +208,7 @@ export type {
   CrossVaultLiveQuery, CrossVaultLiveAggregation, LiveQueryOptions,
   SchemaManifestRow, DeploymentEvent, CapturedBlueprint,
   CrossVaultDerivationSpec, CrossVaultDerivationContext, RefreshInsightsResult,
-  MigrationStatusRow, FleetMigrationResult,
+  MigrationStatusRow, SchemaRolloutResult,
 } from './federation/index.js'
 export type { GroupedRow as CrossVaultGroupedRow } from './federation/index.js'
 

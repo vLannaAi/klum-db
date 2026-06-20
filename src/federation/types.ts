@@ -68,14 +68,14 @@ export interface VaultGroupOptions<T> {
   /**
    * Lazy migrate-on-open (#271 fleet migration). When `true`, opening a shard
    * whose registry `schemaVersion` is behind the template's version runs that
-   * shard's cutover inline (via `migrateShard`) before surfacing the handle.
-   * Zero cost for shards never opened. Default `false` (use `migrateFleet`).
+   * shard's cutover inline (via `cutoverShard`) before surfacing the handle.
+   * Zero cost for shards never opened. Default `false` (use `rolloutSchema`).
    */
   readonly migrateOnOpen?: boolean
 }
 
-/** Result of `VaultGroup.migrateFleet` (#271 active batch runner). */
-export interface FleetMigrationResult {
+/** Result of `VaultGroup.rolloutSchema` (#271 active batch runner). */
+export interface SchemaRolloutResult {
   /** The version migrated toward (the template's current version). */
   readonly target: number
   /** vaultIds successfully migrated (or already current). */

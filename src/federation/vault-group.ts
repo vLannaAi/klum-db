@@ -32,7 +32,7 @@ import type {
   CrossVaultDerivationContext,
   RefreshInsightsResult,
   MigrationStatusRow,
-  FleetMigrationResult,
+  SchemaRolloutResult,
 } from './types.js'
 
 /** Reserved separator between group name and partition key in a shard vault id. */
@@ -124,7 +124,7 @@ export class VaultGroup<T> {
     if (this.migrateOnOpen) {
       const row = await this.registry.get(this.registryId(partitionKey))
       if (row && row.schemaVersion < this.template.version) {
-        await this.migrateShard(partitionKey)
+        await this.cutoverShard(partitionKey)
       }
     }
     return this._openShardRaw(partitionKey)
@@ -383,7 +383,7 @@ export class VaultGroup<T> {
    * Never throws on a cutover failure — it records `status: 'failed'` and
    * returns the row, so a fleet run continues past a bad shard.
    */
-  async migrateShard(partitionKey: string): Promise<MigrationStatusRow> {
+  async cutoverShard(partitionKey: string): Promise<MigrationStatusRow> {
     const vaultId = this.shardVaultId(partitionKey)
     const row = await this.registry.get(this.registryId(partitionKey))
     if (!row) throw new UnknownShardError(partitionKey, this.name)
@@ -430,7 +430,7 @@ export class VaultGroup<T> {
    * - `batchSize` — max shards migrated concurrently per batch (back-pressure).
    *   Default 4. Batches run sequentially; shards within a batch run in parallel.
    */
-  async migrateFleet(options: { cohort?: readonly string[]; batchSize?: number } = {}): Promise<FleetMigrationResult> {
+  async rolloutSchema(options: { cohort?: readonly string[]; batchSize?: number } = {}): Promise<SchemaRolloutResult> {
     const target = this.template.version
     const rows = await this.allRows()
     const cohort = options.cohort
@@ -442,7 +442,7 @@ export class VaultGroup<T> {
     const failed: { vaultId: string; error: string }[] = []
     for (let i = 0; i < todo.length; i += batchSize) {
       const batch = todo.slice(i, i + batchSize)
-      const settled = await Promise.all(batch.map((r) => this.migrateShard(r.partitionKey)))
+      const settled = await Promise.all(batch.map((r) => this.cutoverShard(r.partitionKey)))
       for (const res of settled) {
         if (res.status === 'done') migrated.push(res.vaultId)
         else failed.push({ vaultId: res.vaultId, error: res.error ?? 'unknown' })
