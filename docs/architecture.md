@@ -6,20 +6,18 @@ The canonical, detailed description of how `@klum-db/lobby` relates to `@noy-db`
 
 `@klum-db/lobby` is the **control plane** for a fleet of sovereign `@noy-db` vaults; each vault is the **data plane**. A control plane coordinates the fleet but *never owns the data plane's data* — which is exactly the klum→noy law: custody, crypto, and records stay sovereign in each vault.
 
+```mermaid
+flowchart TD
+    L["<b>CONTROL PLANE</b> · @klum-db/lobby<br/>federate · interchange · custody · surface"]:::cp
+    L ==> V1["🔒 vault"]:::dp
+    L ==> V2["🔒 vault"]:::dp
+    L ==> V3["🔒 vault"]:::dp
+    L ==> V4["🔒 vault"]:::dp
+    classDef cp fill:#0f766e,stroke:#0f766e,color:#ffffff
+    classDef dp fill:#ecfdf5,stroke:#10b981,color:#065f46
 ```
-  ┌────────────────────────────────────────────────────┐
-  │  CONTROL PLANE · @klum-db/lobby                      │
-  │  federate · interchange · custody · surface         │
-  └────────────────────────┬───────────────────────────┘
-                           │ drives — one-way (klum → noy)
-        ┌──────────┬───────┴───────┬──────────┐
-        ▼          ▼               ▼          ▼
-     ┌──────┐   ┌──────┐        ┌──────┐   ┌──────┐
-     │vault │   │vault │        │vault │   │vault │
-     └──────┘   └──────┘        └──────┘   └──────┘
-  DATA PLANE · @noy-db/hub — each vault sovereign & non-fungible,
-  complete on its own.  noy never depends on klum.
-```
+
+*`@noy-db/hub` data plane — **klum drives noy one-way; noy never depends on klum.***
 
 The vaults are a **group, not a cluster** — sovereign and non-fungible (one subject = one vault, the subject holds the deed). *(If Docker→Kubernetes is your reference: the same one-over-many shape, but the units are sovereign, not fungible replicas.)* The two axes below — inward vs outward — are that same boundary, named from the vault's point of view.
 

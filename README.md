@@ -1,6 +1,7 @@
 # @klum-db/lobby
 
-> **`@klum-db/lobby` is the control plane for a fleet of sovereign [noy-db](https://github.com/vLannaAi/noy-db) vaults.** It coordinates many vaults — federate, move data, custody, sync — but **never owns the data**: each vault is a complete, sovereign system on its own. The dependency is **one-way** — klum drives noy; **noy never knows klum exists.**
+> **Unity is strength — for data.**
+> `@klum-db/lobby` is the **control plane** for a fleet of sovereign [noy-db](https://github.com/vLannaAi/noy-db) vaults. Each vault is small, **100%-encrypted**, and complete on its own — its own embedded schema, its own query engine, usable **offline**. The Lobby orchestrates many into one coordinated whole, **online or offline**: **coordination without custody** — it drives the fleet but never owns the data. *One-way — klum drives noy; noy never knows klum exists.*
 
 `@klum-db/lobby` · status: **preview** · depends on `@noy-db/hub`
 
@@ -8,7 +9,7 @@
 
 ## What it is, in 20 seconds
 
-noy-db gives you **one** self-contained, encrypted vault — a complete system on its own. The Lobby is what you add when one actor must work across **many** vaults at once.
+A single vault is complete — its own keys, schema, and truth — but completeness is also a ceiling: alone, a vault can only answer for *itself*. The usual fix is to pour everything into one central store, trading away the sovereignty that made each vault worth trusting. **The Lobby takes the other path — it coordinates the vaults where they stand.**
 
 ```
   ┌────────────────────────────────────────────────────┐
@@ -25,16 +26,18 @@ noy-db gives you **one** self-contained, encrypted vault — a complete system o
   complete on its own.  noy never depends on klum.
 ```
 
-- **Control plane (klum)** coordinates the fleet — but, like any control plane, it *never owns the data plane's data*. Custody, crypto, and records stay sovereign in each vault.
-- **Data plane (noy)** is N independent vaults. noy looks **inward** at one vault; klum looks **outward** across many — the same boundary, named for developers.
-- **One seam, one direction.** klum binds only to the stable `@noy-db/hub/kernel` contract — never hub internals. No `@noy-db` package ever imports `@klum-db` (enforced by a build-time guard). A vault is a complete, shippable system *without* the Lobby.
-- **A group, not a cluster.** The vaults are sovereign and non-fungible — one subject = one vault, and the subject holds the deed. (Thai *klum* กลุ่ม = a group.)
+- **Coordination without custody.** klum drives the fleet — federate, move data, custody, sync — but **never owns the data**: keys, crypto, and records stay sovereign in each vault, and klum binds to one stable contract (`@noy-db/hub/kernel`), never hub internals. *(One-way, and enforced — a build-time guard means no `@noy-db` package can ever import `@klum-db`.)*
+- **Bring the work to the data, not the data to a lake.** Cross-vault queries resolve *across* the group — each vault answers for its own slice under its own keys, nothing pools. No central honeypot to breach.
+- **Small enough to own, coordinated enough to scale.** Each vault stays small, portable, and individually revocable; orchestration recovers the cross-cutting reach you'd otherwise need a monolith for.
+- **A group, not a cluster.** Vaults are sovereign and non-fungible — one subject = one vault, the subject holds the deed. *Joined, not merged; allied, not absorbed.* (Thai *klum* กลุ่ม = a group.)
 
 ## Why it exists
 
-Banking, accounting, health, insurance — the data that matters is **individual, single-entity, and owned by the subject**. noy-db makes each of those a small, sovereign, in-memory vault that is a *complete system on its own*. Working "small, in memory" isn't a limitation — it's the strong core. The limitation only bites when one actor must work across **many** datasets at once.
+Banking, accounting, health, insurance — the data that matters is **individual, single-subject, and owned by the person it's about**. noy-db makes each of those a small, sovereign, **100%-encrypted** vault — a complete system on its own. *You own your data, in spite of the cloud.* The limit only bites when one actor must work across **many** subjects at once.
 
-The **Lobby** is the framework for exactly that outward dimension: *the efficiency of a small independent dataset at the core, joined with an actor operating across many at the same time* — a counterbalance to tech giants holding user data hostage. Vaults stay independent and relocatable; the Lobby coordinates them without absorbing them.
+That's the Lobby's dimension: the efficiency and privacy of a small sovereign dataset at the core, joined with an actor operating across many at once — **governance by default, not by checklist**. Access is **scoped, purpose-limited, and revocable** (the subject can withdraw anytime); the orchestrator coordinates without absorbing. A counterweight to the central data lake — without the lock-in, the lock-out, or the single honeypot.
+
+**Lineage:** klum-db sits in the local-first / data-sovereignty tradition — see [Local-first software](https://www.inkandswitch.com/essay/local-first/), [GDPR data portability](https://gdpr-info.eu/art-20-gdpr/), and the [Personal Data Stores review](https://pmc.ncbi.nlm.nih.gov/articles/PMC9921726/).
 
 ## Reads in a sentence
 
