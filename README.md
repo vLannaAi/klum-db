@@ -144,4 +144,4 @@ await lobby.applySurface('tax-vault', surface, bundleBytes, transferKey)
 
 Preview. `@klum-db/lobby` is its own repository and the sole publisher of `@klum-db/*` to npm. It depends on the **published** `@noy-db/*` packages through the stable `@noy-db/hub/kernel` boundary and versions **independently** (`0.2.0-pre.N`, decoupled from noy-db). Pilot-1 (FR-1…FR-9), the dock tier, and `Lobby.graduate()` are complete.
 
-See [`PROVENANCE.md`](./PROVENANCE.md) for origin and build history.
+See [`docs/architecture.md`](docs/architecture.md) for the detailed noy-db ↔ klum-db boundary, [`docs/roadmap.md`](docs/roadmap.md) for what's next, and [`PROVENANCE.md`](./PROVENANCE.md) for origin and build history.
