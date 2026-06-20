@@ -1,6 +1,6 @@
 /**
- * Fleet schema-migration runner (#271): VaultGroup.migrateShard / migrateFleet
- * + migrate-on-open, with per-shard migration-status in the StateManagement Vault.
+ * Fleet schema-migration runner (#271): VaultGroup.cutoverShard / rolloutSchema
+ * + cutover-on-open, with per-shard migration-status in the StateManagement Vault.
  */
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
@@ -54,7 +54,7 @@ interface Invoice extends Record<string, unknown> { id: string; clientId: string
 
 // A managed group at `version` with a trivial template (no schema change) —
 // exercises the runner's ORCHESTRATION (version bump, status, cohort, resume).
-async function firmAt(db: Noydb, version: number, migrateOnOpen = false) {
+async function firmAt(db: Noydb, version: number, cutoverOnOpen = false) {
   const lobby = createLobby(db)
   lobby.withVaultTemplate('client-template', {
     version,
@@ -62,7 +62,7 @@ async function firmAt(db: Noydb, version: number, migrateOnOpen = false) {
   })
   return lobby.openVaultGroup<Invoice>('firm-clients', {
     sharding: { keyOf: (r) => r.clientId, vaultTemplate: 'client-template', autoCreate: true },
-    migrateOnOpen,
+    cutoverOnOpen,
   })
 }
 
@@ -72,14 +72,14 @@ async function statusOf(db: Noydb, partitionKey: string) {
 }
 
 describe('fleet migration — orchestration (#271)', () => {
-  it('migrateFleet advances behind shards to the template version + records status', async () => {
+  it('rolloutSchema advances behind shards to the template version + records status', async () => {
     const db = await createNoydb({ store: memory(), user: 'op', secret: 'p' })
     const firm1 = await firmAt(db, 1)
     await firm1.collection('invoices').put('a1', { id: 'a1', clientId: 'acme', amount: 1 })
     await firm1.collection('invoices').put('b1', { id: 'b1', clientId: 'globex', amount: 2 })
 
     const firm2 = await firmAt(db, 2)
-    const res = await firm2.migrateFleet()
+    const res = await firm2.rolloutSchema()
     expect(res.target).toBe(2)
     expect(res.migrated.sort()).toEqual(['firm-clients--acme', 'firm-clients--globex'])
     expect(res.failed).toEqual([])
@@ -96,8 +96,8 @@ describe('fleet migration — orchestration (#271)', () => {
     const firm1 = await firmAt(db, 1)
     await firm1.collection('invoices').put('a1', { id: 'a1', clientId: 'acme', amount: 1 })
     const firm2 = await firmAt(db, 2)
-    expect((await firm2.migrateFleet()).migrated).toEqual(['firm-clients--acme'])
-    expect((await firm2.migrateFleet()).migrated).toEqual([]) // nothing left
+    expect((await firm2.rolloutSchema()).migrated).toEqual(['firm-clients--acme'])
+    expect((await firm2.rolloutSchema()).migrated).toEqual([]) // nothing left
   })
 
   it('cohort restricts the run (staged / canary rollout)', async () => {
@@ -107,33 +107,33 @@ describe('fleet migration — orchestration (#271)', () => {
     await firm1.collection('invoices').put('b1', { id: 'b1', clientId: 'globex', amount: 2 })
     const firm2 = await firmAt(db, 2)
 
-    const canary = await firm2.migrateFleet({ cohort: ['acme'] })
+    const canary = await firm2.rolloutSchema({ cohort: ['acme'] })
     expect(canary.migrated).toEqual(['firm-clients--acme'])
     const rows = await firm2.allRows()
     expect(rows.find((r) => r.partitionKey === 'acme')?.schemaVersion).toBe(2)
     expect(rows.find((r) => r.partitionKey === 'globex')?.schemaVersion).toBe(1) // not in cohort
 
     // then the rest
-    expect((await firm2.migrateFleet()).migrated).toEqual(['firm-clients--globex'])
+    expect((await firm2.rolloutSchema()).migrated).toEqual(['firm-clients--globex'])
   })
 
-  it('migrateShard migrates a single shard; a current shard is a no-op', async () => {
+  it('cutoverShard migrates a single shard; a current shard is a no-op', async () => {
     const db = await createNoydb({ store: memory(), user: 'op', secret: 'p' })
     const firm1 = await firmAt(db, 1)
     await firm1.collection('invoices').put('a1', { id: 'a1', clientId: 'acme', amount: 1 })
     const firm2 = await firmAt(db, 2)
-    const r1 = await firm2.migrateShard('acme')
+    const r1 = await firm2.cutoverShard('acme')
     expect(r1).toMatchObject({ status: 'done', targetVersion: 2 })
-    const r2 = await firm2.migrateShard('acme') // already current
+    const r2 = await firm2.cutoverShard('acme') // already current
     expect(r2).toMatchObject({ status: 'done', migrated: 0 })
   })
 
-  it('migrateOnOpen lazily migrates a behind shard on access', async () => {
+  it('cutoverOnOpen lazily migrates a behind shard on access', async () => {
     const db = await createNoydb({ store: memory(), user: 'op', secret: 'p' })
     const firm1 = await firmAt(db, 1)
     await firm1.collection('invoices').put('a1', { id: 'a1', clientId: 'acme', amount: 1 })
 
-    const firm2 = await firmAt(db, 2, /* migrateOnOpen */ true)
+    const firm2 = await firmAt(db, 2, /* cutoverOnOpen */ true)
     expect((await firm2.allRows()).find((r) => r.partitionKey === 'acme')?.schemaVersion).toBe(1)
     await firm2.shard('acme') // drilling in triggers the lazy migration
     expect((await firm2.allRows()).find((r) => r.partitionKey === 'acme')?.schemaVersion).toBe(2)
@@ -149,7 +149,7 @@ describe('fleet migration — orchestration (#271)', () => {
     expect(before.results).toEqual([])
     expect(before.skippedVaults).toEqual([{ vaultId: 'firm-clients--acme', reason: 'schema-drift' }])
     // after migration: included
-    await firm2.migrateFleet()
+    await firm2.rolloutSchema()
     const after = await firm2.collection('invoices').query().toArray({ minVersion: 2 })
     expect(after.results.map((r) => r.id)).toEqual(['a1'])
     expect(after.skippedVaults).toEqual([])
@@ -161,7 +161,7 @@ describe('fleet migration — real coordinatedCutover across shards (#271)', () 
   const newSchema = z.object({ id: z.string(), clientId: z.string(), amount: z.object({ gross: z.number() }) })
   const transform = (d: Record<string, unknown>) => ({ id: d['id'], clientId: d['clientId'], amount: { gross: d['total'] } })
 
-  it('migrateFleet runs each shard cutover and transforms records in place', async () => {
+  it('rolloutSchema runs each shard cutover and transforms records in place', async () => {
     const store = memory()
     const sharding = { keyOf: (r: { clientId: string }) => r.clientId, vaultTemplate: 'ct', autoCreate: true }
 
@@ -185,7 +185,7 @@ describe('fleet migration — real coordinatedCutover across shards (#271)', () 
     })
     const firm2 = await lobby2.openVaultGroup('firm-clients', { sharding })
 
-    const res = await firm2.migrateFleet()
+    const res = await firm2.rolloutSchema()
     expect(res.migrated.sort()).toEqual(['firm-clients--acme', 'firm-clients--globex'])
     expect(res.failed).toEqual([])
 

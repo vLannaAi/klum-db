@@ -32,7 +32,7 @@ import type {
   CrossVaultDerivationContext,
   RefreshInsightsResult,
   MigrationStatusRow,
-  FleetMigrationResult,
+  SchemaRolloutResult,
 } from './types.js'
 
 /** Reserved separator between group name and partition key in a shard vault id. */
@@ -68,7 +68,7 @@ export class VaultGroup<T> {
     /** @internal */ readonly registry: Collection<VaultRegistryRow>,
     /** @internal */ readonly sharding: ShardingConfig<T>,
     /** @internal */ readonly template: VaultTemplate,
-    /** @internal — lazy migrate-on-open (#271). */ readonly migrateOnOpen: boolean = false,
+    /** @internal — lazy cutover-on-open (#271). */ readonly cutoverOnOpen: boolean = false,
   ) {
     if (name.includes(SHARD_SEPARATOR)) {
       throw new ValidationError(
@@ -116,21 +116,21 @@ export class VaultGroup<T> {
   }
 
   /**
-   * Open an existing shard and apply the template. When `migrateOnOpen` is set
+   * Open an existing shard and apply the template. When `cutoverOnOpen` is set
    * (#271) and the shard's registry version is behind the template, its cutover
    * runs inline first — so a behind shard never surfaces a stale handle.
    */
   async openShard(partitionKey: string): Promise<Vault> {
-    if (this.migrateOnOpen) {
+    if (this.cutoverOnOpen) {
       const row = await this.registry.get(this.registryId(partitionKey))
       if (row && row.schemaVersion < this.template.version) {
-        await this.migrateShard(partitionKey)
+        await this.cutoverShard(partitionKey)
       }
     }
     return this._openShardRaw(partitionKey)
   }
 
-  /** @internal — open + configure with no migrate-on-open hook (used by the migration path itself to avoid recursion). */
+  /** @internal — open + configure with no cutover-on-open hook (used by the migration path itself to avoid recursion). */
   private async _openShardRaw(partitionKey: string): Promise<Vault> {
     const vault = await this.db.openVault(this.shardVaultId(partitionKey), { create: false })
     this.template.configure(vault)
@@ -383,7 +383,7 @@ export class VaultGroup<T> {
    * Never throws on a cutover failure — it records `status: 'failed'` and
    * returns the row, so a fleet run continues past a bad shard.
    */
-  async migrateShard(partitionKey: string): Promise<MigrationStatusRow> {
+  async cutoverShard(partitionKey: string): Promise<MigrationStatusRow> {
     const vaultId = this.shardVaultId(partitionKey)
     const row = await this.registry.get(this.registryId(partitionKey))
     if (!row) throw new UnknownShardError(partitionKey, this.name)
@@ -430,7 +430,7 @@ export class VaultGroup<T> {
    * - `batchSize` — max shards migrated concurrently per batch (back-pressure).
    *   Default 4. Batches run sequentially; shards within a batch run in parallel.
    */
-  async migrateFleet(options: { cohort?: readonly string[]; batchSize?: number } = {}): Promise<FleetMigrationResult> {
+  async rolloutSchema(options: { cohort?: readonly string[]; batchSize?: number } = {}): Promise<SchemaRolloutResult> {
     const target = this.template.version
     const rows = await this.allRows()
     const cohort = options.cohort
@@ -442,7 +442,7 @@ export class VaultGroup<T> {
     const failed: { vaultId: string; error: string }[] = []
     for (let i = 0; i < todo.length; i += batchSize) {
       const batch = todo.slice(i, i + batchSize)
-      const settled = await Promise.all(batch.map((r) => this.migrateShard(r.partitionKey)))
+      const settled = await Promise.all(batch.map((r) => this.cutoverShard(r.partitionKey)))
       for (const res of settled) {
         if (res.status === 'done') migrated.push(res.vaultId)
         else failed.push({ vaultId: res.vaultId, error: res.error ?? 'unknown' })

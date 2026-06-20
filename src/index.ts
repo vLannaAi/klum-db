@@ -75,7 +75,7 @@ export class Lobby {
     const { StateManagementVault } = await import('./federation/state-vault.js')
     const stateVault = opts.registry ? undefined : await StateManagementVault.open(db)
     const registry = opts.registry ?? stateVault!.registry
-    const group = new VaultGroup<T>(db, name, registry, opts.sharding, template, opts.migrateOnOpen ?? false)
+    const group = new VaultGroup<T>(db, name, registry, opts.sharding, template, opts.cutoverOnOpen ?? false)
     if (stateVault) {
       group._attachStateVault(stateVault)
       await stateVault.recordManifest(opts.sharding.vaultTemplate, template)
@@ -208,7 +208,7 @@ export type {
   CrossVaultLiveQuery, CrossVaultLiveAggregation, LiveQueryOptions,
   SchemaManifestRow, DeploymentEvent, CapturedBlueprint,
   CrossVaultDerivationSpec, CrossVaultDerivationContext, RefreshInsightsResult,
-  MigrationStatusRow, FleetMigrationResult,
+  MigrationStatusRow, SchemaRolloutResult,
 } from './federation/index.js'
 export type { GroupedRow as CrossVaultGroupedRow } from './federation/index.js'
 
