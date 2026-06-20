@@ -67,7 +67,7 @@ lobby.withVaultTemplate('client', { version: 1, configure: v => v.collection('in
 const group = await lobby.openVaultGroup('clients', { registry, sharding: { keyOf, vaultTemplate: 'client', autoCreate: true } })
 await group.shard('acme-co').collection('invoices').put('i1', { id: 'i1', total: '1200.00' })
 const all = await group.queryAcross(/* … */)          // fan-out read across shards
-await group.migrateFleet({ batchSize: 4 })             // resumable, registry-tracked
+await group.rolloutSchema({ batchSize: 4 })             // resumable, registry-tracked
 ```
 
 ### 2 · Interchange — move data between vaults, safely
@@ -137,11 +137,11 @@ await lobby.applySurface('tax-vault', surface, bundleBytes, transferKey)
 
 - **Depends on `@noy-db/hub`**, binds to the stable **`@noy-db/hub/kernel`** subpath — never reaches into hub internals.
 - **Custody is a vault-level concern** and lives *in* hub (keyring/CEK/consent primitives); the Lobby **re-exports** it (`createDeedOwner`, `liberateVault`, `CustodyApi`) so consumers have one import surface.
-- **Federation** was extracted *out of* hub into the Lobby (a breaking pre-1.0 change): `Noydb.openVaultGroup` now throws `FederationMovedError` — use `lobby.openVaultGroup`.
+- **Federation** lives in the Lobby, not in hub — open fleets with `lobby.openVaultGroup` (`@noy-db/hub` no longer ships the `openVaultGroup` / `openStateManagementVault` / `withVaultTemplate` fleet methods).
 - The dependency is enforced one-way at build time; an `@noy-db` package importing `@klum-db` fails the architecture check.
 
 ## Status
 
-Preview, developed inside the noy-db monorepo while the kernel boundary stabilizes (it graduates to its own repo once proven). Versions track noy-db in lockstep. Pilot-1 epic (FR-1…FR-9) complete.
+Preview. `@klum-db/lobby` is its own repository and the sole publisher of `@klum-db/*` to npm. It depends on the **published** `@noy-db/*` packages through the stable `@noy-db/hub/kernel` boundary and versions **independently** (`0.2.0-pre.N`, decoupled from noy-db). Pilot-1 (FR-1…FR-9), the dock tier, and `Lobby.graduate()` are complete.
 
-Design spec: [`docs/superpowers/specs/2026-06-16-lobby-framework-design.md`](../../docs/superpowers/specs/2026-06-16-lobby-framework-design.md). Runnable showcases: [`showcases/src/12x-klum-*`](../../showcases/src).
+See [`PROVENANCE.md`](./PROVENANCE.md) for origin and build history.
