@@ -66,12 +66,12 @@ export interface VaultGroupOptions<T> {
   readonly registry?: Collection<VaultRegistryRow>
   readonly sharding: ShardingConfig<T>
   /**
-   * Lazy migrate-on-open (#271 fleet migration). When `true`, opening a shard
+   * Lazy cutover-on-open (#271 fleet migration). When `true`, opening a shard
    * whose registry `schemaVersion` is behind the template's version runs that
    * shard's cutover inline (via `cutoverShard`) before surfacing the handle.
    * Zero cost for shards never opened. Default `false` (use `rolloutSchema`).
    */
-  readonly migrateOnOpen?: boolean
+  readonly cutoverOnOpen?: boolean
 }
 
 /** Result of `VaultGroup.rolloutSchema` (#271 active batch runner). */

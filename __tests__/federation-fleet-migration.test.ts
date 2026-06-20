@@ -1,6 +1,6 @@
 /**
  * Fleet schema-migration runner (#271): VaultGroup.cutoverShard / rolloutSchema
- * + migrate-on-open, with per-shard migration-status in the StateManagement Vault.
+ * + cutover-on-open, with per-shard migration-status in the StateManagement Vault.
  */
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
@@ -54,7 +54,7 @@ interface Invoice extends Record<string, unknown> { id: string; clientId: string
 
 // A managed group at `version` with a trivial template (no schema change) —
 // exercises the runner's ORCHESTRATION (version bump, status, cohort, resume).
-async function firmAt(db: Noydb, version: number, migrateOnOpen = false) {
+async function firmAt(db: Noydb, version: number, cutoverOnOpen = false) {
   const lobby = createLobby(db)
   lobby.withVaultTemplate('client-template', {
     version,
@@ -62,7 +62,7 @@ async function firmAt(db: Noydb, version: number, migrateOnOpen = false) {
   })
   return lobby.openVaultGroup<Invoice>('firm-clients', {
     sharding: { keyOf: (r) => r.clientId, vaultTemplate: 'client-template', autoCreate: true },
-    migrateOnOpen,
+    cutoverOnOpen,
   })
 }
 
@@ -128,12 +128,12 @@ describe('fleet migration — orchestration (#271)', () => {
     expect(r2).toMatchObject({ status: 'done', migrated: 0 })
   })
 
-  it('migrateOnOpen lazily migrates a behind shard on access', async () => {
+  it('cutoverOnOpen lazily migrates a behind shard on access', async () => {
     const db = await createNoydb({ store: memory(), user: 'op', secret: 'p' })
     const firm1 = await firmAt(db, 1)
     await firm1.collection('invoices').put('a1', { id: 'a1', clientId: 'acme', amount: 1 })
 
-    const firm2 = await firmAt(db, 2, /* migrateOnOpen */ true)
+    const firm2 = await firmAt(db, 2, /* cutoverOnOpen */ true)
     expect((await firm2.allRows()).find((r) => r.partitionKey === 'acme')?.schemaVersion).toBe(1)
     await firm2.shard('acme') // drilling in triggers the lazy migration
     expect((await firm2.allRows()).find((r) => r.partitionKey === 'acme')?.schemaVersion).toBe(2)

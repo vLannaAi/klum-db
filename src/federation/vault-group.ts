@@ -68,7 +68,7 @@ export class VaultGroup<T> {
     /** @internal */ readonly registry: Collection<VaultRegistryRow>,
     /** @internal */ readonly sharding: ShardingConfig<T>,
     /** @internal */ readonly template: VaultTemplate,
-    /** @internal — lazy migrate-on-open (#271). */ readonly migrateOnOpen: boolean = false,
+    /** @internal — lazy cutover-on-open (#271). */ readonly cutoverOnOpen: boolean = false,
   ) {
     if (name.includes(SHARD_SEPARATOR)) {
       throw new ValidationError(
@@ -116,12 +116,12 @@ export class VaultGroup<T> {
   }
 
   /**
-   * Open an existing shard and apply the template. When `migrateOnOpen` is set
+   * Open an existing shard and apply the template. When `cutoverOnOpen` is set
    * (#271) and the shard's registry version is behind the template, its cutover
    * runs inline first — so a behind shard never surfaces a stale handle.
    */
   async openShard(partitionKey: string): Promise<Vault> {
-    if (this.migrateOnOpen) {
+    if (this.cutoverOnOpen) {
       const row = await this.registry.get(this.registryId(partitionKey))
       if (row && row.schemaVersion < this.template.version) {
         await this.cutoverShard(partitionKey)
@@ -130,7 +130,7 @@ export class VaultGroup<T> {
     return this._openShardRaw(partitionKey)
   }
 
-  /** @internal — open + configure with no migrate-on-open hook (used by the migration path itself to avoid recursion). */
+  /** @internal — open + configure with no cutover-on-open hook (used by the migration path itself to avoid recursion). */
   private async _openShardRaw(partitionKey: string): Promise<Vault> {
     const vault = await this.db.openVault(this.shardVaultId(partitionKey), { create: false })
     this.template.configure(vault)
