@@ -1,6 +1,6 @@
 # Roadmap — next features
 
-Where `@klum-db/lobby` goes next. Each item notes **what** it is, **why it's the Lobby's** (per the [boundary law](./architecture.md#the-boundary-law--deciding-what-goes-where)), **what it builds on**, and rough **scope**. Ordered by readiness × value.
+Where `@klum-db/lobby` — the **control plane** over a fleet of sovereign `@noy-db` vaults — goes next. Each item notes **what** it is, **why it's the Lobby's** (per the [boundary law](./architecture.md#the-boundary-law--deciding-what-goes-where)), **what it builds on**, and rough **scope**. Ordered by readiness × value.
 
 Shipped through `@klum-db/lobby@0.2.0-pre.30`: the four pillars (Federation, Interchange, Custody re-export, Surface), Dock → `graduate()`, the WS-3 federation tooling (`groupInspector` / `meterGroup` / `klum` CLI), the Transform/Cutover/**Rollout** vocabulary + the `migrate*`→`rollout*`/`cutover*` rename, and optional tooling peers.
 
