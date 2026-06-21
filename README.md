@@ -1,6 +1,6 @@
 # @klum-db/lobby
 
-> **Unity is strength — for data.**
+> **Small enough to own, coordinated enough to scale.**
 > `@klum-db/lobby` is the **control plane** for a fleet of sovereign [noy-db](https://github.com/vLannaAi/noy-db) vaults. Each vault is small, **100%-encrypted**, and complete on its own — its own embedded schema, its own query engine, usable **offline**. The Lobby orchestrates many into one coordinated whole, **online or offline**: **coordination without custody** — it drives the fleet but never owns the data. *One-way — klum drives noy; noy never knows klum exists.*
 
 `@klum-db/lobby` · status: **preview** · depends on `@noy-db/hub`
@@ -10,6 +10,21 @@
 ## What it is, in 20 seconds
 
 A single vault is complete — its own keys, schema, and truth — but completeness is also a ceiling: alone, a vault can only answer for *itself*. The usual fix is to pour everything into one central store, trading away the sovereignty that made each vault worth trusting. **The Lobby takes the other path — it coordinates the vaults where they stand.**
+
+```mermaid
+flowchart TD
+    L["<b>CONTROL PLANE</b> · @klum-db/lobby<br/>federate · interchange · custody · surface"]:::cp
+    L ==> V1["🔒 vault"]:::dp
+    L ==> V2["🔒 vault"]:::dp
+    L ==> V3["🔒 vault"]:::dp
+    L ==> V4["🔒 vault"]:::dp
+    classDef cp fill:#0f766e,stroke:#0f766e,color:#ffffff
+    classDef dp fill:#ecfdf5,stroke:#10b981,color:#065f46
+```
+
+*DATA PLANE · `@noy-db/hub` — each vault sovereign & 100% encrypted, complete on its own. **klum drives noy one-way; noy never depends on klum.***
+
+<details><summary>Text version (npm / non-Mermaid viewers)</summary>
 
 ```
   ┌────────────────────────────────────────────────────┐
@@ -25,10 +40,11 @@ A single vault is complete — its own keys, schema, and truth — but completen
   DATA PLANE · @noy-db/hub — each vault sovereign & non-fungible,
   complete on its own.  noy never depends on klum.
 ```
+</details>
 
 - **Coordination without custody.** klum drives the fleet — federate, move data, custody, sync — but **never owns the data**: keys, crypto, and records stay sovereign in each vault, and klum binds to one stable contract (`@noy-db/hub/kernel`), never hub internals. *(One-way, and enforced — a build-time guard means no `@noy-db` package can ever import `@klum-db`.)*
 - **Bring the work to the data, not the data to a lake.** Cross-vault queries resolve *across* the group — each vault answers for its own slice under its own keys, nothing pools. No central honeypot to breach.
-- **Small enough to own, coordinated enough to scale.** Each vault stays small, portable, and individually revocable; orchestration recovers the cross-cutting reach you'd otherwise need a monolith for.
+- **Small core, coordinated reach.** Each vault stays small, portable, and individually revocable; orchestration recovers the cross-cutting reach you'd otherwise need a monolith for.
 - **A group, not a cluster.** Vaults are sovereign and non-fungible — one subject = one vault, the subject holds the deed. *Joined, not merged; allied, not absorbed.* (Thai *klum* กลุ่ม = a group.)
 
 ## Why it exists
@@ -37,7 +53,7 @@ Banking, accounting, health, insurance — the data that matters is **individual
 
 That's the Lobby's dimension: the efficiency and privacy of a small sovereign dataset at the core, joined with an actor operating across many at once — **governance by default, not by checklist**. Access is **scoped, purpose-limited, and revocable** (the subject can withdraw anytime); the orchestrator coordinates without absorbing. A counterweight to the central data lake — without the lock-in, the lock-out, or the single honeypot.
 
-**Lineage:** klum-db sits in the local-first / data-sovereignty tradition — see [Local-first software](https://www.inkandswitch.com/essay/local-first/), [GDPR data portability](https://gdpr-info.eu/art-20-gdpr/), and the [Personal Data Stores review](https://pmc.ncbi.nlm.nih.gov/articles/PMC9921726/).
+**Lineage & market context:** klum-db sits in the local-first / data-sovereignty tradition — [Local-first software](https://www.inkandswitch.com/essay/local-first/), [GDPR data portability](https://gdpr-info.eu/art-20-gdpr/), and the full picture in [**docs/positioning.md**](docs/positioning.md).
 
 ## Reads in a sentence
 
