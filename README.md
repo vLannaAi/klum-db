@@ -1,43 +1,65 @@
 # @klum-db/lobby
 
-> **The Lobby** orchestrates a *group* of sovereign [noy-db](https://github.com/vLannaAi/noy-db) vaults — federation, interchange, custody, and scoped sync — without ever dissolving their independence.
->
-> **noy-db is the vault (inward). klum-db is the Lobby (outward).**
-> A container runs perfectly alone; the engine orchestrates many. Docker is to a container what the Lobby is to a vault.
+> **Small enough to own, coordinated enough to scale.**
+> `@klum-db/lobby` is the **control plane** for a fleet of sovereign [noy-db](https://github.com/vLannaAi/noy-db) vaults. Each vault is small, **100%-encrypted**, and complete on its own — its own embedded schema, its own query engine, usable **offline**. The Lobby orchestrates many into one coordinated whole, **online or offline**: **coordination without custody** — it drives the fleet but never owns the data. *One-way — klum drives noy; noy never knows klum exists.*
 
 `@klum-db/lobby` · status: **preview** · depends on `@noy-db/hub`
 
 ---
 
-## The idea in 20 seconds
+## What it is, in 20 seconds
 
-Banking, accounting, health, insurance — the data that matters is **individual, single-entity, and owned by the subject**. noy-db makes each of those a small, sovereign, in-memory vault that is a *complete system on its own*. Working "small, in memory" isn't a limitation — it's the strong core. The limitation only bites when one actor must work across **many** datasets at once.
+A single vault is complete — its own keys, schema, and truth — but completeness is also a ceiling: alone, a vault can only answer for *itself*. The usual fix is to pour everything into one central store, trading away the sovereignty that made each vault worth trusting. **The Lobby takes the other path — it coordinates the vaults where they stand.**
 
-The **Lobby** is the framework for exactly that outward dimension: *the efficiency of a small independent dataset at the core, joined with an actor operating across many at the same time* — a counterbalance to tech giants holding user data hostage. Vaults stay independent and relocatable; the Lobby coordinates them without absorbing them. That's why it's a **group** (Thai *klum* กลุ่ม), never a cluster — federation here is non-aggregative.
+```mermaid
+flowchart TD
+    L["<b>CONTROL PLANE</b> · @klum-db/lobby<br/>federate · interchange · custody · surface"]:::cp
+    L ==> V1["🔒 vault"]:::dp
+    L ==> V2["🔒 vault"]:::dp
+    L ==> V3["🔒 vault"]:::dp
+    L ==> V4["🔒 vault"]:::dp
+    classDef cp fill:#0f766e,stroke:#0f766e,color:#ffffff
+    classDef dp fill:#ecfdf5,stroke:#10b981,color:#065f46
+```
+
+*DATA PLANE · `@noy-db/hub` — each vault sovereign & 100% encrypted, complete on its own. **klum drives noy one-way; noy never depends on klum.***
+
+<details><summary>Text version (npm / non-Mermaid viewers)</summary>
+
+```
+  ┌────────────────────────────────────────────────────┐
+  │  CONTROL PLANE · @klum-db/lobby                      │
+  │  federate · interchange · custody · surface         │
+  └────────────────────────┬───────────────────────────┘
+                           │ drives — one-way (klum → noy)
+        ┌──────────┬───────┴───────┬──────────┐
+        ▼          ▼               ▼          ▼
+     ┌──────┐   ┌──────┐        ┌──────┐   ┌──────┐
+     │vault │   │vault │        │vault │   │vault │
+     └──────┘   └──────┘        └──────┘   └──────┘
+  DATA PLANE · @noy-db/hub — each vault sovereign & non-fungible,
+  complete on its own.  noy never depends on klum.
+```
+</details>
+
+- **Coordination without custody.** klum drives the fleet — federate, move data, custody, sync — but **never owns the data**: keys, crypto, and records stay sovereign in each vault, and klum binds to one stable contract (`@noy-db/hub/kernel`), never hub internals. *(One-way, and enforced — a build-time guard means no `@noy-db` package can ever import `@klum-db`.)*
+- **Bring the work to the data, not the data to a lake.** Cross-vault queries resolve *across* the group — each vault answers for its own slice under its own keys, nothing pools. No central honeypot to breach.
+- **Small core, coordinated reach.** Each vault stays small, portable, and individually revocable; orchestration recovers the cross-cutting reach you'd otherwise need a monolith for.
+- **A group, not a cluster.** Vaults are sovereign and non-fungible — one subject = one vault, the subject holds the deed. *Joined, not merged; allied, not absorbed.* (Thai *klum* กลุ่ม = a group.)
+
+## Why it exists
+
+Banking, accounting, health, insurance — the data that matters is **individual, single-subject, and owned by the person it's about**. noy-db makes each of those a small, sovereign, **100%-encrypted** vault — a complete system on its own. *You own your data, in spite of the cloud.* The limit only bites when one actor must work across **many** subjects at once.
+
+That's the Lobby's dimension: the efficiency and privacy of a small sovereign dataset at the core, joined with an actor operating across many at once — **governance by default, not by checklist**. Access is **scoped, purpose-limited, and revocable** (the subject can withdraw anytime); the orchestrator coordinates without absorbing. A counterweight to the central data lake — without the lock-in, the lock-out, or the single honeypot.
+
+**Lineage & market context:** klum-db sits in the local-first / data-sovereignty tradition — [Local-first software](https://www.inkandswitch.com/essay/local-first/), [GDPR data portability](https://gdpr-info.eu/art-20-gdpr/), and the full picture in [**docs/positioning.md**](docs/positioning.md).
 
 ## Reads in a sentence
 
 > A firm is a **Custodian** in the **Lobby**: it holds operating grants to client **Vaults** that all reference one shared **Pool**. The client holds the **Deed**. To onboard, the firm **Relocates** a client's vault as a **Bundle**, **Migrates** it to the current schema, and **Merges** the Pool slice by field **Authority** using **Provenance**. The client can **Withdraw** anytime; an abandoned vault can be **Liberated**.
 
 Every bold word is a real, shipped capability.
-
-## Architecture — one-way dependency, two complementary axes
-
-```
-            outward / orchestration                 inward / the vault
-   ┌─────────────────────────────────┐     ┌──────────────────────────────────┐
-   │          @klum-db/lobby         │     │            @noy-db/hub            │
-   │                                 │     │                                   │
-   │  Lobby  ⊃  many Vaults          │ ──▶ │  Vault ⊃ Collection ⊃ Record ⊃ Field │
-   │   • Federation (fleets)         │     │   • keyring · per-record CEK      │
-   │   • Interchange (move data)     │     │   • computed/derivation · money   │
-   │   • Custody (Deed/Custodian)    │     │   • i18n · history · snapshots    │
-   │   • Surface (scoped sync)       │     │   • a vault + a store = complete  │
-   └─────────────────────────────────┘     └──────────────────────────────────┘
-          binds to the stable  ── @noy-db/hub/kernel ──  surface only
-```
-
-The dependency runs **one way**: `@klum-db/lobby` → `@noy-db/hub`. No `@noy-db` package ever imports `@klum-db` (enforced by a build-time architecture guard). The Lobby binds to a stable internal surface, **`@noy-db/hub/kernel`**, not hub internals. A vault is a complete, shippable system *without* the Lobby; the Lobby is what you reach for when one actor must work across many vaults at once.
 
 ## Install
 
@@ -131,14 +153,19 @@ const { bundleBytes, transferKey } = await lobby.exportSurface('payroll-vault', 
 await lobby.applySurface('tax-vault', surface, bundleBytes, transferKey)
 ```
 
+### On-ramp · Dock → `graduate()`
+
+A foreign, non-noy-db unit (a legacy DB, a raw export) can't be federated directly — the sovereign tier needs a vault's keyring and per-record keys. **Dock** carries it read-only at a lower tier; **`graduate()`** imports it into a fresh sovereign vault, unlocking the full tier (custody, provenance, field-Authority merge). It's the one move that *adds a node to the data plane* rather than coordinating existing ones.
+
 ---
 
 ## Relationship with noy-db
 
-- **Depends on `@noy-db/hub`**, binds to the stable **`@noy-db/hub/kernel`** subpath — never reaches into hub internals.
+The one-way law and the kernel seam are covered up top — here are the specifics that matter when you build:
+
 - **Custody is a vault-level concern** and lives *in* hub (keyring/CEK/consent primitives); the Lobby **re-exports** it (`createDeedOwner`, `liberateVault`, `CustodyApi`) so consumers have one import surface.
 - **Federation** lives in the Lobby, not in hub — open fleets with `lobby.openVaultGroup` (`@noy-db/hub` no longer ships the `openVaultGroup` / `openStateManagementVault` / `withVaultTemplate` fleet methods).
-- The dependency is enforced one-way at build time; an `@noy-db` package importing `@klum-db` fails the architecture check.
+- **Enforced, not conventional:** an `@noy-db` package importing `@klum-db` fails noy-db's build-time architecture check.
 
 ## Status
 

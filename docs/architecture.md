@@ -2,6 +2,25 @@
 
 The canonical, detailed description of how `@klum-db/lobby` relates to `@noy-db`. The [README](../README.md) is the concise intro; this is the deep dive. (Origin/history: [PROVENANCE.md](../PROVENANCE.md).)
 
+## The shape in one picture — control plane / data plane
+
+`@klum-db/lobby` is the **control plane** for a fleet of sovereign `@noy-db` vaults; each vault is the **data plane**. A control plane coordinates the fleet but *never owns the data plane's data* — which is exactly the klum→noy law: custody, crypto, and records stay sovereign in each vault.
+
+```mermaid
+flowchart TD
+    L["<b>CONTROL PLANE</b> · @klum-db/lobby<br/>federate · interchange · custody · surface"]:::cp
+    L ==> V1["🔒 vault"]:::dp
+    L ==> V2["🔒 vault"]:::dp
+    L ==> V3["🔒 vault"]:::dp
+    L ==> V4["🔒 vault"]:::dp
+    classDef cp fill:#0f766e,stroke:#0f766e,color:#ffffff
+    classDef dp fill:#ecfdf5,stroke:#10b981,color:#065f46
+```
+
+*`@noy-db/hub` data plane — **klum drives noy one-way; noy never depends on klum.***
+
+The vaults are a **group, not a cluster** — sovereign and non-fungible (one subject = one vault, the subject holds the deed). *(If Docker→Kubernetes is your reference: the same one-over-many shape, but the units are sovereign, not fungible replicas.)* The two axes below — inward vs outward — are that same boundary, named from the vault's point of view.
+
 ## Two axes, one direction
 
 | | **`@noy-db/hub`** — *inward* | **`@klum-db/lobby`** — *outward* |
@@ -59,6 +78,37 @@ The app is the composition root: it injects the concrete implementation into `cr
 | Multi-vault xlsx export (`exportMultiVaultXlsx`) | single-vault xlsx (`@noy-db/as-xlsx`) |
 
 Migration vocabulary (Transform → Cutover → Rollout) is in [`docs/glossary/schema-migration.md`](./glossary/schema-migration.md), mirrored in noy-db.
+
+## Reconciling the names — FR-numbers and `src/` folders
+
+Two internal taxonomies pre-date the four-pillar spine; this is where they map, so the names never compete with the front-door model.
+
+**FR-1…FR-9 → pillar** (the pilot numbering; the FR pilot *was* the Interchange/Custody/Surface slice, which is why it doesn't cover Federation or Dock):
+
+| FR | Capability | Pillar |
+|---|---|---|
+| FR-1 | Multi-compartment bundle (NDBM) | Interchange |
+| FR-2 | Relocate (cross-vault FK-closure extraction) | Interchange |
+| FR-3 | Merge / `mergeCompartment` | Interchange |
+| FR-4 | Field-Authority conflict resolution | Interchange |
+| FR-5 | Provenance (`_source`/`_sourceTs`) | Interchange *(noy-side primitive)* |
+| FR-6 | Custody (Deed / Custodian / Liberate) | Custody *(re-export)* |
+| FR-7 | Surface / scoped sync | Surface |
+| FR-8 | Migrate-then-merge | Interchange |
+| FR-9 | Multi-vault FK-driven xlsx export | Interchange |
+| — | `VaultGroup`, cross-shard, Insight, rollout | Federation *(pre-dates the FR pilot)* |
+| — | Dock → `graduate()` | Dock on-ramp |
+
+**`src/` folder → pillar** (the folders don't rename to the pillars — this map explains the layout):
+
+| Folder | Pillar |
+|---|---|
+| `src/federation/` | Federation |
+| `src/interchange/` | Interchange (+ `surface.ts` → Surface) |
+| `src/bundle/` | Interchange (NDBM multi-bundle) |
+| `src/dock/` | Dock on-ramp |
+| `src/bin/` | CLI tooling (`klum`) |
+| *(no folder)* | Custody — pure re-export from `@noy-db/hub` in `index.ts` |
 
 ## Versioning & the published-package seam
 
