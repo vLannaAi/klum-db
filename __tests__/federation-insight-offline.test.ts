@@ -74,4 +74,29 @@ describe('Insight Vault — offline-shard consistency (#3)', () => {
     h.downed.add('firm-clients--acme')
     await expect(h.firm.refreshInsights({ failFast: true })).rejects.toThrow('backend unreachable')
   })
+
+  it('a skipped shard keeps its prior summary untouched', async () => {
+    await h.firm.refreshInsights()
+    expect((await (await h.summaries()).get('acme'))?.total).toBe(100)
+    h.downed.add('firm-clients--acme')
+    await h.firm.refreshInsights() // acme skipped
+    // prior summary still there, not deleted / emptied
+    expect((await (await h.summaries()).get('acme'))?.total).toBe(100)
+  })
+
+  it('only: restricts the refresh to the named shards', async () => {
+    const inv = h.firm.collection<Inv>('invoices')
+    await inv.put('a2', { id: 'a2', clientId: 'acme', amount: 25, status: 'paid' })
+    await inv.put('b2', { id: 'b2', clientId: 'globex', amount: 25, status: 'paid' })
+    const res = await h.firm.refreshInsights({ only: ['acme'] })
+    expect(res.written).toBe(1)
+    const s = await h.summaries()
+    expect((await s.get('acme'))?.total).toBe(125) // refreshed
+    expect(await s.get('globex')).toBeNull() // never touched
+  })
+
+  it('only: an unknown partition key is a no-op (no throw)', async () => {
+    const res = await h.firm.refreshInsights({ only: ['does-not-exist'] })
+    expect(res).toEqual({ written: 0, skippedVaults: [] })
+  })
 })
