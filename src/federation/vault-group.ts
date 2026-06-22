@@ -314,6 +314,11 @@ export class VaultGroup<T> {
    * Insight Vault keyed by partition key. Shards behind `minVersion`,
    * unprovisioned, or whose read errors are reported in `skippedVaults` and
    * are not written (a stale summary is never left behind for a failed shard).
+   * A shard whose backend is unreachable (provisioning probe or read throws) is
+   * **skipped** (`reason: 'error'`) and the pass continues for the others — its
+   * prior summary is left intact. Pass `failFast: true` for the legacy
+   * all-or-nothing throw. Reconcile a lagging shard later with
+   * `refreshInsights({ only: [pk] })` or `refreshDerivation(pk)`.
    */
   async refreshInsights(options: { minVersion?: number; concurrency?: number; only?: readonly string[]; failFast?: boolean } = {}): Promise<RefreshInsightsResult> {
     if (this.crossVaultDerivations.length === 0) return { written: 0, skippedVaults: [] }
