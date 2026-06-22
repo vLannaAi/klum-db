@@ -343,6 +343,7 @@ export class VaultGroup<T> {
         const row = eligible[i]!
         const res = results[i]
         if (!res || res.result === undefined) {
+          if (options.failFast && res?.error) throw res.error
           skipped.push({ vaultId: row.vaultId, reason: 'error', ...(res?.error ? { error: res.error } : {}) })
           continue
         }
