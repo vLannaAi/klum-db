@@ -210,25 +210,38 @@ export class VaultGroup<T> {
     return new ShardedCollection<T, R>(this, collectionName)
   }
 
-  /** @internal — eligible (openable-candidate) rows + drift/divergence skips. */
-  async resolveEligible(options: { minVersion?: number } = {}): Promise<{
+  /** @internal — eligible (openable-candidate) rows + drift/divergence/unreachable skips. */
+  async resolveEligible(options: { minVersion?: number; only?: readonly string[]; failFast?: boolean } = {}): Promise<{
     eligible: VaultRegistryRow[]
     skipped: SkippedVault[]
   }> {
     const rows = await this.allRows()
+    const candidates = options.only ? rows.filter((r) => options.only!.includes(r.partitionKey)) : rows
     const skipped: SkippedVault[] = []
     const versionOk: VaultRegistryRow[] = []
-    for (const row of rows) {
+    for (const row of candidates) {
       if (options.minVersion !== undefined && row.schemaVersion < options.minVersion) {
         skipped.push({ vaultId: row.vaultId, reason: 'schema-drift' })
       } else versionOk.push(row)
     }
-    const provisioned = await Promise.all(versionOk.map((r) => this.db._shardVaultProvisioned(r.vaultId)))
+    // Probe provisioning per shard. An unreachable backend throws here; catch it
+    // (record a skip) so one down shard does not sink the fleet — unless failFast.
+    const probes = await Promise.all(
+      versionOk.map(async (row) => {
+        try {
+          return { row, provisioned: await this.db._shardVaultProvisioned(row.vaultId) }
+        } catch (err) {
+          if (options.failFast) throw err
+          return { row, error: err as Error }
+        }
+      }),
+    )
     const eligible: VaultRegistryRow[] = []
-    versionOk.forEach((row, i) => {
-      if (provisioned[i]) eligible.push(row)
-      else skipped.push({ vaultId: row.vaultId, reason: 'error', error: new ShardProvisioningError(row.vaultId, row.partitionKey) })
-    })
+    for (const p of probes) {
+      if ('error' in p) skipped.push({ vaultId: p.row.vaultId, reason: 'error', error: p.error })
+      else if (p.provisioned) eligible.push(p.row)
+      else skipped.push({ vaultId: p.row.vaultId, reason: 'error', error: new ShardProvisioningError(p.row.vaultId, p.row.partitionKey) })
+    }
     return { eligible, skipped }
   }
 
@@ -302,11 +315,13 @@ export class VaultGroup<T> {
    * unprovisioned, or whose read errors are reported in `skippedVaults` and
    * are not written (a stale summary is never left behind for a failed shard).
    */
-  async refreshInsights(options: { minVersion?: number; concurrency?: number } = {}): Promise<RefreshInsightsResult> {
+  async refreshInsights(options: { minVersion?: number; concurrency?: number; only?: readonly string[]; failFast?: boolean } = {}): Promise<RefreshInsightsResult> {
     if (this.crossVaultDerivations.length === 0) return { written: 0, skippedVaults: [] }
-    const { eligible, skipped } = await this.resolveEligible(
-      options.minVersion !== undefined ? { minVersion: options.minVersion } : {},
-    )
+    const { eligible, skipped } = await this.resolveEligible({
+      ...(options.minVersion !== undefined ? { minVersion: options.minVersion } : {}),
+      ...(options.only !== undefined ? { only: options.only } : {}),
+      ...(options.failFast !== undefined ? { failFast: options.failFast } : {}),
+    })
     let written = 0
     for (const spec of this.crossVaultDerivations) {
       const results = await this.db.queryAcross<Record<string, unknown>[]>(
