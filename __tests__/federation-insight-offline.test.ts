@@ -99,4 +99,31 @@ describe('Insight Vault — offline-shard consistency (#3)', () => {
     const res = await h.firm.refreshInsights({ only: ['does-not-exist'] })
     expect(res).toEqual({ written: 0, skippedVaults: [] })
   })
+
+  it('refreshDerivation reconciles one shard after reconnect (covers a non-autoPush derivation)', async () => {
+    await h.firm.refreshInsights()
+    // acme goes down, more invoices land elsewhere; acme summary lags
+    h.downed.add('firm-clients--acme')
+    await h.firm.collection<Inv>('invoices').put('b2', { id: 'b2', clientId: 'globex', amount: 200, status: 'paid' })
+    await h.firm.refreshInsights() // globex updated to 250, acme skipped (still 100)
+    expect((await (await h.summaries()).get('globex'))?.total).toBe(250)
+
+    // acme reconnects; targeted catch-up — derivation was registered WITHOUT autoPush
+    h.downed.delete('firm-clients--acme')
+    await h.firm.collection<Inv>('invoices').put('a2', { id: 'a2', clientId: 'acme', amount: 5, status: 'paid' })
+    const res = await h.firm.refreshDerivation('acme')
+    expect(res.written).toBe(1)
+    expect(res.skippedVaults).toEqual([])
+    const s = await h.summaries()
+    expect((await s.get('acme'))?.total).toBe(105) // reconciled
+    expect((await s.get('globex'))?.total).toBe(250) // untouched by the targeted call
+  })
+
+  it('refreshDerivation re-reports a still-unreachable shard without throwing', async () => {
+    await h.firm.refreshInsights()
+    h.downed.add('firm-clients--acme')
+    const res = await h.firm.refreshDerivation('acme')
+    expect(res.written).toBe(0)
+    expect(res.skippedVaults.map((v) => v.vaultId)).toEqual(['firm-clients--acme'])
+  })
 })

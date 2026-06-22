@@ -354,6 +354,15 @@ export class VaultGroup<T> {
     return { written, skippedVaults: skipped }
   }
 
+  /**
+   * Reconcile one shard's Insight summaries after its backend was unreachable.
+   * Equivalent to `refreshInsights({ only: [partitionKey] })` — runs every
+   * registered derivation (autoPush or not) for just this shard.
+   */
+  async refreshDerivation(partitionKey: string): Promise<RefreshInsightsResult> {
+    return this.refreshInsights({ only: [partitionKey] })
+  }
+
   /** @internal — re-derive + push every autoPush derivation's summary for one shard. */
   private async _recomputeShardInsights(partitionKey: string): Promise<void> {
     const row = await this.registry.get(this.registryId(partitionKey))
