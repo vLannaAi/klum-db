@@ -259,4 +259,40 @@ describe('ShardedQuery.aggregate() partial-reduce (#8)', () => {
     expect(reduceCalls).toBe(1) // partial path taken
     expect(result.total).toBe(100)
   })
+
+  it('falls back to central for a spec with a merge-less reducer (still correct)', async () => {
+    const h = await harness({ autoCreate: true })
+    const inv = h.firm.collection('invoices')
+    await inv.put('a1', { clientId: 'acme', amount: 100, status: 'open' })
+    await inv.put('b1', { clientId: 'beta', amount: 50, status: 'open' })
+    // custom reducer WITHOUT merge → canPartialReduce false → central path
+    const noMerge = { init: () => 0, step: (s: number, r: { amount: number }) => s + r.amount, finalize: (s: number) => s }
+    const { result } = await h.firm.collection('invoices').query()
+      .aggregate({ tot: noMerge as never }).run()
+    expect((result as { tot: number }).tot).toBe(150)
+  })
+
+  it('empty fleet → zero-result equals reduceRecords([])', async () => {
+    const h = await harness({ autoCreate: true }) // no writes → no shards
+    const { result, skippedVaults } = await h.firm.collection('invoices').query()
+      .aggregate({ total: sum('amount'), n: count(), mean: avg('amount') }).run()
+    expect(skippedVaults).toEqual([])
+    expect(result).toEqual({ total: 0, n: 0, mean: null })
+  })
+
+  it('a skipped shard is reported; the aggregate covers the healthy shards', async () => {
+    const h = await harness({ autoCreate: true })
+    const inv = h.firm.collection('invoices')
+    await inv.put('a1', { clientId: 'acme', amount: 100, status: 'open' })
+    await inv.put('b1', { clientId: 'beta', amount: 200, status: 'open' })
+    // Divergent registry row → unprovisioned shard surfaces as an 'error' skip.
+    await h.registry.put('firm-clients--ghost', {
+      vaultId: 'firm-clients--ghost', partitionKey: 'ghost',
+      templateName: 'client-template', schemaVersion: 1, createdAt: 1, group: 'firm-clients',
+    } as never)
+    const { result, skippedVaults } = await h.firm.collection('invoices').query()
+      .aggregate({ total: sum('amount') }).run()
+    expect(result.total).toBe(300) // acme + beta
+    expect(skippedVaults.map((s) => s.vaultId)).toContain('firm-clients--ghost')
+  })
 })

@@ -604,7 +604,7 @@ export class ShardedQuery<T, R = T> {
         await coll.list() // hydrate the in-memory cache before the sync query
         let q = coll.query()
         for (const c of this.clauses) q = q.where(c.field, c.op, c.value)
-        const rows = await q.toArray()
+        const rows = q.toArray()
         return reduceToPartial(rows, spec)
       },
       { concurrency: options.concurrency ?? 1, create: false },

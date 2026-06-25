@@ -38,8 +38,12 @@ export interface LiveBinding {
 }
 
 /**
- * One-shot cross-vault aggregate. Concatenates all shard records and runs a
- * single central reduce, ensuring correct avg/mean values.
+ * One-shot cross-vault aggregate. When every reducer in the spec exposes the
+ * `merge` seam, `run()` uses **distributed partial-reduce** — each shard folds
+ * its own records to a partial state, merged centrally and finalized once (no
+ * union materialized). A spec with any merge-less reducer falls back to
+ * central-reduce. The result is identical either way. `.live()` and grouped
+ * aggregates remain central-reduce.
  */
 export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
   constructor(
