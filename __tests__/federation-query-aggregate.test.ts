@@ -9,7 +9,7 @@ import { ConflictError, NoAccessError } from '@noy-db/hub'
 import { createNoydb } from '@noy-db/hub'
 import type { Vault } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
-import { sum, count, avg } from '@noy-db/hub/aggregate'
+import { sum, count, avg, min, max } from '@noy-db/hub/aggregate'
 import { createLobby } from '../src/index.js'
 
 // ─── Shared in-memory adapter (copied from federation-vault-group.test.ts) ───
@@ -227,5 +227,36 @@ describe('ShardedQuery.live() — no-grant scoped access', () => {
     expect(await adapter.get('firm-clients--beta', '_keyring', 'advisor')).toBeNull()
 
     lq.stop()
+  })
+})
+
+describe('ShardedQuery.aggregate() partial-reduce (#8)', () => {
+  it('partial-reduce path equals central over uneven shards (sum/count/avg/min/max)', async () => {
+    const h = await harness({ autoCreate: true })
+    const inv = h.firm.collection('invoices')
+    // uneven: acme 3, beta 1, gamma 2
+    await inv.put('a1', { clientId: 'acme', amount: 100, status: 'open' })
+    await inv.put('a2', { clientId: 'acme', amount: 250, status: 'open' })
+    await inv.put('a3', { clientId: 'acme', amount: 50, status: 'open' })
+    await inv.put('b1', { clientId: 'beta', amount: 70, status: 'open' })
+    await inv.put('g1', { clientId: 'gamma', amount: 900, status: 'open' })
+    await inv.put('g2', { clientId: 'gamma', amount: 10, status: 'open' })
+    const { result, skippedVaults } = await h.firm.collection('invoices').query()
+      .aggregate({ total: sum('amount'), n: count(), mean: avg('amount'), lo: min('amount'), hi: max('amount') }).run()
+    expect(skippedVaults).toEqual([])
+    expect(result).toEqual({ total: 1380, n: 6, mean: 230, lo: 10, hi: 900 })
+    expect(result.mean).toBe(230) // union mean, NOT avg-of-avgs
+  })
+
+  it('takes the partial-reduce branch (fanoutReduce is invoked) when all reducers have merge', async () => {
+    const h = await harness({ autoCreate: true })
+    await h.firm.collection('invoices').put('a1', { clientId: 'acme', amount: 100, status: 'open' })
+    const q = h.firm.collection('invoices').query()
+    let reduceCalls = 0
+    const realFanoutReduce = (q as unknown as { fanoutReduce: Function }).fanoutReduce.bind(q)
+    ;(q as unknown as { fanoutReduce: Function }).fanoutReduce = (...args: unknown[]) => { reduceCalls++; return realFanoutReduce(...args) }
+    const { result } = await q.aggregate({ total: sum('amount') }).run()
+    expect(reduceCalls).toBe(1) // partial path taken
+    expect(result.total).toBe(100)
   })
 })
