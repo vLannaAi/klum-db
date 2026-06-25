@@ -18,10 +18,17 @@ import type {
 } from './types.js'
 import { CrossVaultLive } from './cross-vault-live.js'
 import type { ChangeEvent } from '@noy-db/hub/kernel'
+import { canPartialReduce, mergePartials, finalizePartial } from './partial-reduce.js'
+import type { PartialState } from './partial-reduce.js'
 
 /** A source that can fan out records across shards. Satisfied by ShardedQuery. */
 export interface FanoutRecordSource<R> {
   fanoutRecords(options: FanoutQueryOptions): Promise<{ records: R[]; skippedVaults: SkippedVault[] }>
+  /** Optional distributed partial-reduce (#8): fold each shard to a state in-callback. */
+  fanoutReduce?(
+    spec: AggregateSpec,
+    options: FanoutQueryOptions,
+  ): Promise<{ partials: PartialState[]; skippedVaults: SkippedVault[] }>
 }
 
 /** Live-binding hooks (change subscription + relevance) threaded from ShardedQuery. */
@@ -31,8 +38,12 @@ export interface LiveBinding {
 }
 
 /**
- * One-shot cross-vault aggregate. Concatenates all shard records and runs a
- * single central reduce, ensuring correct avg/mean values.
+ * One-shot cross-vault aggregate. When every reducer in the spec exposes the
+ * `merge` seam, `run()` uses **distributed partial-reduce** — each shard folds
+ * its own records to a partial state, merged centrally and finalized once (no
+ * union materialized). A spec with any merge-less reducer falls back to
+ * central-reduce. The result is identical either way. `.live()` and grouped
+ * aggregates remain central-reduce.
  */
 export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
   constructor(
@@ -45,6 +56,12 @@ export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
     result: AggregateResult<Spec>
     skippedVaults: SkippedVault[]
   }> {
+    // Distributed partial-reduce when every reducer has `merge` and the source
+    // supports it; otherwise central-reduce over the union (identical result).
+    if (this.src.fanoutReduce && canPartialReduce(this.spec)) {
+      const { partials, skippedVaults } = await this.src.fanoutReduce(this.spec, options)
+      return { result: finalizePartial(this.spec, mergePartials(this.spec, partials)), skippedVaults }
+    }
     const { records, skippedVaults } = await this.src.fanoutRecords(options)
     return { result: reduceRecords(records, this.spec), skippedVaults }
   }

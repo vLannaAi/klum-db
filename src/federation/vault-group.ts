@@ -18,6 +18,8 @@ import { InsightAutoPush } from './insight-auto-push.js'
 import { CrossVaultAggregation, CrossVaultGroupedAggregation } from './aggregate-across.js'
 import type { FanoutRecordSource, LiveBinding } from './aggregate-across.js'
 import type { AggregateSpec } from '@noy-db/hub/kernel'
+import { reduceToPartial } from './partial-reduce.js'
+import type { PartialState } from './partial-reduce.js'
 import type {
   ShardingConfig,
   VaultRegistryRow,
@@ -611,6 +613,38 @@ export class ShardedQuery<T, R = T> {
       else for (const item of r.result) results.push(item)
     }
     return { records: results, skippedVaults: skipped }
+  }
+
+  /**
+   * @internal — distributed partial-reduce (#8). Fan out across eligible shards,
+   * but fold each shard's where-filtered records to a partial reducer STATE
+   * inside the per-shard callback (never returning the rows). Only the scalar
+   * `.aggregate()` path calls this, and that path rejects join legs upstream.
+   */
+  async fanoutReduce(
+    spec: AggregateSpec,
+    options: FanoutQueryOptions = {},
+  ): Promise<{ partials: PartialState[]; skippedVaults: SkippedVault[] }> {
+    const { eligible, skipped } = await this.group.resolveEligible(options)
+    const across = await this.group.db.queryAcross<PartialState>(
+      eligible.map((r) => r.vaultId),
+      async (vault) => {
+        this.group.template.configure(vault)
+        const coll = vault.collection<R>(this.collectionName)
+        await coll.list() // hydrate the in-memory cache before the sync query
+        let q = coll.query()
+        for (const c of this.clauses) q = q.where(c.field, c.op, c.value)
+        const rows = q.toArray()
+        return reduceToPartial(rows, spec)
+      },
+      { concurrency: options.concurrency ?? 1, create: false },
+    )
+    const partials: PartialState[] = []
+    for (const r of across) {
+      if (r.error) skipped.push({ vaultId: r.vault, reason: classifyShardSkip(r.error), error: r.error })
+      else partials.push(r.result)
+    }
+    return { partials, skippedVaults: skipped }
   }
 
   /** Fan out across eligible shards, merge, then apply any broadcast dimension legs. */
