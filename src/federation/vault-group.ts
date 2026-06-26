@@ -708,25 +708,15 @@ export class ShardedQuery<T, R = T> {
     }
   }
 
-  /** @internal — joined queries don't support reactive/aggregate surfaces in v1. */
-  private assertNoJoinLegs(surface: string): void {
-    if (this.coPartitionedLegs.length || this.broadcastLegs.length) {
-      throw new CrossShardJoinError(
-        `${surface}() is not supported on a ShardedQuery with crossShardJoin/broadcastJoin ` +
-          `legs in v1. Use toArray() for joined cross-shard queries.`,
-      )
-    }
-  }
-
   /** Returns a reactive cross-shard live query — a facade over CrossVaultLive. */
   live(options: LiveQueryOptions = {}): CrossVaultLiveQuery<R> {
-    this.assertNoJoinLegs('live')
     const bind = this.liveBinding()
     const core = new CrossVaultLive<{ records: R[]; skipped: SkippedVault[] }>({
       ...bind,
       compute: async () => {
         const { records, skippedVaults } = await this.fanoutRecords(options)
-        return { records, skipped: skippedVaults }
+        const joined = (await applyBroadcastLegs(records, this.broadcastLegs)) as R[]
+        return { records: joined, skipped: skippedVaults }
       },
       initialSnapshot: { records: [], skipped: [] },
       ...(options.debounceMs !== undefined ? { debounceMs: options.debounceMs } : {}),

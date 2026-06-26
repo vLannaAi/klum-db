@@ -287,14 +287,47 @@ describe('broadcastJoin miss', () => {
   })
 })
 
-describe('deferred surfaces throw when join legs are present', () => {
-  it('live() throws CrossShardJoinError with a co-partitioned leg', async () => {
-    const { firm } = await harness()
-    expect(() =>
-      firm.collection('invoices').query().crossShardJoin('customerId', { as: 'c' }).live(),
-    ).toThrow(CrossShardJoinError)
+describe('joined cross-shard live surface (#14)', () => {
+  // poll helper (never assert on fixed ticks)
+  const waitFor = async (pred: () => boolean, timeout = 2000) => {
+    const start = Date.now()
+    while (!pred()) { if (Date.now() - start > timeout) throw new Error('waitFor timeout'); await new Promise((r) => setTimeout(r, 5)) }
+  }
+
+  it('live() over a broadcast-joined query carries the dimension and reacts to a left write', async () => {
+    resetBroadcastWarnings()
+    const { db, firm } = await harness()
+    const currencies = (await db.openVault('dimensions')).collection<{ id: string; symbol: string }>('currencies')
+    await currencies.put('usd', { id: 'usd', symbol: '$' })
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c1', { id: 'c1', name: 'A' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c1', amount: 100, status: 'paid', currencyCode: 'usd' })
+
+    const lq = firm.collection('invoices').query()
+      .broadcastJoin('currencyCode', { as: 'fx', from: currencies })
+      .live()
+    await lq.ready
+    const row = lq.value.find((r) => (r as Invoice).id === 'i1') as Record<string, unknown>
+    expect((row.fx as { symbol: string }).symbol).toBe('$') // joined dimension present
+
+    // a write to the LEFT collection triggers a recompute
+    await firm.collection('invoices').put('i2', { id: 'i2', clientId: 'acme', customerId: 'c1', amount: 50, status: 'paid', currencyCode: 'usd' })
+    await waitFor(() => lq.value.length === 2)
+    expect((lq.value.find((r) => (r as Invoice).id === 'i2') as Record<string, unknown>).fx).toMatchObject({ symbol: '$' })
+    lq.stop()
   })
 
+  it('co-partitioned-joined live() carries the joined right record', async () => {
+    const { firm } = await harness()
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c-acme', { id: 'c-acme', name: 'Acme Co' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c-acme', amount: 100, status: 'overdue' })
+
+    const lq = firm.collection('invoices').query().crossShardJoin('customerId', { as: 'customer' }).live()
+    await lq.ready
+    expect(((lq.value[0] as Record<string, unknown>).customer as Customer).name).toBe('Acme Co')
+    lq.stop()
+  })
 })
 
 describe('joined cross-shard aggregate surfaces (#14)', () => {
