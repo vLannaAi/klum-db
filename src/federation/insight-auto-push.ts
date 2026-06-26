@@ -1,7 +1,8 @@
 /**
  * @klum-db/lobby federation — Insight auto-push controller (#12).
  *
- * Pure scheduling: coalesces shard writes into one microtask flush per burst.
+ * Pure scheduling: coalesces shard writes into one flush per burst — per microtask,
+ * or on a reset-debounce timer when `debounceMs` is set.
  * Knows nothing about vaults — it calls back into the owner via `recompute`
  * (re-derive + push that shard's summary) and `isSource` (does this collection
  * feed an auto-push derivation?). Best-effort: a failed recompute is reported

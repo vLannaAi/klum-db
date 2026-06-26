@@ -124,3 +124,23 @@ describe('VaultGroup — auto-push debounce (#13)', () => {
     expect(await readSummary(db, 'acme')).toMatchObject({ count: 2, total: 3 })
   })
 })
+
+describe('VaultGroup — auto-push minVersion gating (#13)', () => {
+  it('does NOT push a summary for a shard behind minVersion', async () => {
+    const derive = makeDerive()
+    // template is v1; minVersion 2 → the v1 shard is gated out
+    const { db, group } = await setup({ autoPush: { minVersion: 2 }, derive })
+    await group.collection('invoices').put('i1', { id: 'acme', amount: 100 } as never)
+    await group.whenInsightsSettled()
+    expect(await readSummary(db, 'acme')).toBeFalsy() // gated — nothing pushed
+  })
+
+  it('pushes a summary for a shard at or above minVersion', async () => {
+    const derive = makeDerive()
+    // template is v1; minVersion 1 → the v1 shard passes (1 >= 1)
+    const { db, group } = await setup({ autoPush: { minVersion: 1 }, derive })
+    await group.collection('invoices').put('i1', { id: 'acme', amount: 100 } as never)
+    await group.whenInsightsSettled()
+    expect(await readSummary(db, 'acme')).toMatchObject({ count: 1, total: 100 })
+  })
+})

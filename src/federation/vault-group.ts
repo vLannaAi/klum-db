@@ -425,6 +425,8 @@ export class VaultGroup<T> {
     }
     for (const spec of this.crossVaultDerivations) {
       if (!spec.autoPush) continue
+      const min = autoPushConfig(spec)?.minVersion
+      if (min !== undefined && row.schemaVersion < min) continue // gated: behind-version shard (#13)
       const records = await shard.collection<Record<string, unknown>>(spec.source).list()
       const summary = spec.derive(records, ctx)
       const insight = await this.db.openVault(spec.target.vault)
