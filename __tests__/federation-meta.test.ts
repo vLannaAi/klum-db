@@ -4,6 +4,12 @@ import type { NoydbStore, EncryptedEnvelope, VaultSnapshot, Vault } from '@noy-d
 import { ConflictError, createNoydb } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
 import { createLobby } from '../src/index.js'
+import type { GroupMeta, FederationMeta, FederatedRetrieveResult } from '../src/index.js'
+// compile-time guard: these must be on the public surface
+const _meta: GroupMeta = { label: 'x' }
+const _fed: FederationMeta | undefined = undefined
+const _ret: FederatedRetrieveResult<unknown> | undefined = undefined
+void _meta; void _fed; void _ret
 
 interface Doc extends Record<string, unknown> { shard: string; body: string }
 

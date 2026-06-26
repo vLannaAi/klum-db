@@ -209,6 +209,8 @@ export type {
   SchemaManifestRow, DeploymentEvent, CapturedBlueprint,
   CrossVaultDerivationSpec, CrossVaultDerivationContext, RefreshInsightsResult,
   MigrationStatusRow, SchemaRolloutResult,
+  FederatedRetrieveOptions, FederatedRetrieveHit, FederatedRetrieveResult,
+  GroupMeta, FederationMeta,
 } from './federation/index.js'
 export type { GroupedRow as CrossVaultGroupedRow } from './federation/index.js'
 
