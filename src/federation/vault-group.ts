@@ -38,6 +38,7 @@ import type {
   SchemaRolloutResult,
   FederatedRetrieveOptions,
   FederatedRetrieveResult,
+  GroupMeta,
 } from './types.js'
 
 /** Reserved separator between group name and partition key in a shard vault id. */
@@ -74,6 +75,7 @@ export class VaultGroup<T> {
     /** @internal */ readonly sharding: ShardingConfig<T>,
     /** @internal */ readonly template: VaultTemplate,
     /** @internal — lazy cutover-on-open (#271). */ readonly cutoverOnOpen: boolean = false,
+    /** @internal — group-level descriptive metadata (#27). */ readonly meta?: GroupMeta,
   ) {
     if (name.includes(SHARD_SEPARATOR)) {
       throw new ValidationError(
