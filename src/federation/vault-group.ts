@@ -708,7 +708,15 @@ export class ShardedQuery<T, R = T> {
     }
   }
 
-  /** Returns a reactive cross-shard live query — a facade over CrossVaultLive. */
+  /**
+   * Returns a reactive cross-shard live query — a facade over CrossVaultLive.
+   *
+   * Joined queries (crossShardJoin / broadcastJoin) are supported (#14): the live
+   * value reflects the fully-joined rows. **v1 limitation:** recomputes only on
+   * writes to the primary (left) collection; writes to a co-partitioned right
+   * collection or a broadcast-dimension collection do NOT trigger a recompute —
+   * re-run the query to pick those up.
+   */
   live(options: LiveQueryOptions = {}): CrossVaultLiveQuery<R> {
     const bind = this.liveBinding()
     const core = new CrossVaultLive<{ records: R[]; skipped: SkippedVault[] }>({
