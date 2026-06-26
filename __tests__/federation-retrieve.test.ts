@@ -85,7 +85,7 @@ describe('ShardedCollection.retrieve() — federated (#26)', () => {
     // acme is v1; require v2 → acme drifts out
     const { hits, skippedVaults } = await h.group.collection<Doc>('docs').retrieve('alpha', { minVersion: 2 })
     expect(skippedVaults.length).toBeGreaterThanOrEqual(1)
-    expect(hits.every((x) => x.vault !== 'firm-docs--acme' || true)).toBe(true) // no throw is the assertion
+    expect(skippedVaults.some((s) => s.vaultId === 'firm-docs--acme')).toBe(true)
   })
 
   it('per-shard retrieve() error (semantic without embeddings) → skippedVaults, no throw', async () => {
@@ -111,5 +111,45 @@ describe('ShardedCollection.retrieve() — federated (#26)', () => {
     const { hits, skippedVaults } = await empty.group.collection<Doc>('docs').retrieve('alpha')
     expect(hits).toEqual([])
     expect(skippedVaults).toEqual([])
+  })
+})
+
+async function makeSemanticGroup() {
+  const db = await createNoydb({ store: memoryStore(), user: 'operator', secret: 'op-pass' })
+  const lobby = createLobby(db)
+  // deterministic stub encoder: dims = [has 'alpha', has 'beta', length parity]
+  const encode = async (t: string) => new Float32Array([t.includes('alpha') ? 1 : 0, t.includes('beta') ? 1 : 0, t.length % 2])
+  lobby.withVaultTemplate('sem-template', {
+    version: 1,
+    configure(vault: Vault) {
+      vault.collection<Doc>('docs', { textIndexes: ['title', 'body'], prefetch: true, embeddings: { source: 'body', dim: 3, model: 'stub', encode } })
+    },
+  })
+  const registry = (await db.openVault('state')).collection<VaultRegistryRow>('vault-registry')
+  const group = await lobby.openVaultGroup<Doc>('firm-docs', {
+    registry, sharding: { keyOf: (r) => r.shard, vaultTemplate: 'sem-template', autoCreate: true },
+  })
+  const docs = group.collection<Doc>('docs')
+  await docs.put('a1', { shard: 'acme', title: 'a', body: 'alpha world', status: 'open' })
+  await docs.put('b1', { shard: 'bigco', title: 'b', body: 'beta world', status: 'open' })
+  return { db, group }
+}
+
+describe('ShardedCollection.retrieve() — semantic/hybrid federation (#26)', () => {
+  it('semantic: cosine results fused across shards, each tagged with its vault', async () => {
+    const s = await makeSemanticGroup()
+    const { hits, skippedVaults } = await s.group.collection<Doc>('docs').retrieve('alpha', { mode: 'semantic' })
+    expect(skippedVaults).toEqual([])
+    expect(hits.length).toBeGreaterThan(0)
+    expect(new Set(hits.map((x) => x.vault))).toEqual(new Set(['firm-docs--acme', 'firm-docs--bigco']))
+    expect(hits.map((x) => x.rank)).toEqual(hits.map((_, i) => i + 1))
+  })
+
+  it('hybrid: per-vault lexical⊕semantic, then RRF across shards', async () => {
+    const s = await makeSemanticGroup()
+    const { hits, skippedVaults } = await s.group.collection<Doc>('docs').retrieve('alpha', { mode: 'hybrid' })
+    expect(skippedVaults).toEqual([])
+    expect(hits.length).toBeGreaterThan(0)
+    expect(hits.map((x) => x.rank)).toEqual(hits.map((_, i) => i + 1))
   })
 })

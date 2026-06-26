@@ -515,10 +515,12 @@ export class ShardedCollection<T, R = T> {
   }
 
   /**
-   * Cross-vault federated retrieval (#26): each shard runs its own trusted-tier
-   * `retrieve()`, results RRF-fused across vaults (rank-only — no cross-vault
-   * statistics). Hits carry their `vault`. An unreachable / drifted / un-indexed
-   * shard is skipped (`skippedVaults`); pass `failFast` to throw instead.
+   * Cross-vault federated retrieval (#26): scatter-gather across all eligible
+   * shards — each shard runs its own trusted-tier `retrieve()`, then results are
+   * RRF-fused by rank only (no cross-vault statistics cross the DEK boundary).
+   * Every hit carries its originating `vault`. An unreachable, schema-drifted, or
+   * un-indexed shard is skipped (`skippedVaults`); pass `failFast` to re-throw
+   * the first per-shard error instead.
    */
   async retrieve(query: string, opts: FederatedRetrieveOptions = {}): Promise<FederatedRetrieveResult<R>> {
     return retrieveAcross<T, R>(this.group, this.collectionName, query, opts)
