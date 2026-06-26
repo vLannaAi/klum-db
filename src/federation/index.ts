@@ -23,6 +23,7 @@ export type {
   DeploymentEvent,
   CapturedBlueprint,
   CrossVaultDerivationSpec,
+  InsightAutoPushConfig,
   CrossVaultDerivationContext,
   RefreshInsightsResult,
   MigrationStatusRow,

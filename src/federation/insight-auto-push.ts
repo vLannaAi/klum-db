@@ -15,6 +15,7 @@ export class InsightAutoPush {
   private pending: Promise<void> | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   private resolvePending: (() => void) | null = null
+  private flushing = false
 
   constructor(
     private readonly recompute: (partitionKey: string) => Promise<void>,
@@ -54,7 +55,13 @@ export class InsightAutoPush {
     if (this.timer) clearTimeout(this.timer)
     this.timer = setTimeout(() => {
       this.timer = null
+      // Single-flight guard: if a flush is already in progress, don't start a
+      // concurrent one — the in-flight flush's finally block will reschedule
+      // from dirty when it completes.
+      if (this.flushing) return
+      this.flushing = true
       void this.runFlush().finally(() => {
+        this.flushing = false
         if (this.dirty.size > 0) {
           this.scheduleDebounced() // re-dirtied during flush — restart the window
         } else {

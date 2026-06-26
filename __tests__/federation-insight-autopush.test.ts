@@ -3,6 +3,11 @@ import { createNoydb } from '@noy-db/hub'
 import { memory } from '@noy-db/to-memory'
 import { createLobby } from '../src/index.js'
 import type { VaultTemplate } from '../src/federation/index.js'
+import { InsightAutoPush } from '../src/federation/insight-auto-push.js'
+import type { InsightAutoPushConfig } from '../src/index.js'
+
+// Compile guard — InsightAutoPushConfig must be exported from the public surface.
+const _cfg: InsightAutoPushConfig = { debounceMs: 5, minVersion: 1 }; void _cfg
 
 const template: VaultTemplate = { version: 1, configure: (v) => { v.collection('invoices') } }
 
@@ -142,5 +147,24 @@ describe('VaultGroup — auto-push minVersion gating (#13)', () => {
     await group.collection('invoices').put('i1', { id: 'acme', amount: 100 } as never)
     await group.whenInsightsSettled()
     expect(await readSummary(db, 'acme')).toMatchObject({ count: 1, total: 100 })
+  })
+})
+
+describe('InsightAutoPush — debounce single-flight (#13)', () => {
+  it('a write during a slow recompute does not spawn a concurrent flush; whenSettled waits for both, in order', async () => {
+    const recomputed: string[] = []
+    let releaseA: (() => void) | null = null
+    const recompute = async (pk: string) => {
+      if (pk === 'a') await new Promise<void>((r) => { releaseA = r }) // 'a' blocks until released
+      recomputed.push(pk)
+    }
+    const ctrl = new InsightAutoPush(recompute, () => true, () => {}, 10)
+    ctrl.noteWrite('a', 'invoices')
+    await new Promise((r) => setTimeout(r, 20)) // timer fires → runFlush#1 starts, awaits on 'a'
+    ctrl.noteWrite('b', 'invoices')             // mid-flush write — must NOT start a concurrent flush
+    await new Promise((r) => setTimeout(r, 20)) // a 2nd timer would fire here without the guard
+    releaseA!()                                  // let 'a' finish
+    await ctrl.whenSettled()
+    expect(recomputed).toEqual(['a', 'b'])       // single-flight + ordered; buggy code yields ['b','a'] / early settle
   })
 })
