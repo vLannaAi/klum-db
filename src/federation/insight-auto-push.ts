@@ -10,23 +10,26 @@
  * @module
  */
 export class InsightAutoPush {
-  /** Partition keys awaiting recompute. */
   private readonly dirty = new Set<string>()
-  /** The in-flight flush, or null when idle. */
   private pending: Promise<void> | null = null
+  private timer: ReturnType<typeof setTimeout> | null = null
+  private resolvePending: (() => void) | null = null
 
   constructor(
     private readonly recompute: (partitionKey: string) => Promise<void>,
     private readonly isSource: (collection: string) => boolean,
     private readonly onError: (err: unknown, partitionKey: string) => void = (err, pk) =>
       console.warn(`[klum-db] insight auto-push failed for shard "${pk}":`, err),
+    /** When set, batch writes on a reset-debounce timer instead of per microtask (#13). */
+    private readonly debounceMs?: number,
   ) {}
 
   /** Called from a shard's onAfterWrite hook. Marks the shard dirty + schedules a flush. */
   noteWrite(partitionKey: string, collection: string): void {
     if (!this.isSource(collection)) return
     this.dirty.add(partitionKey)
-    this.schedule()
+    if (this.debounceMs !== undefined) this.scheduleDebounced()
+    else this.schedule()
   }
 
   /** Resolve once no flush is pending (drains rescheduled flushes too). */
@@ -34,6 +37,7 @@ export class InsightAutoPush {
     while (this.pending) await this.pending
   }
 
+  // ── microtask path (unchanged default) ──
   private schedule(): void {
     if (this.pending) return
     this.pending = this.runFlush().finally(() => {
@@ -41,6 +45,25 @@ export class InsightAutoPush {
       // Writes that arrived during the flush re-dirty the set — drain them.
       if (this.dirty.size > 0) this.schedule()
     })
+  }
+
+  // ── debounce path (#13) ──
+  private scheduleDebounced(): void {
+    if (!this.pending) this.pending = new Promise<void>((r) => { this.resolvePending = r })
+    if (this.timer) clearTimeout(this.timer)
+    this.timer = setTimeout(() => {
+      this.timer = null
+      void this.runFlush().finally(() => {
+        if (this.dirty.size > 0) {
+          this.scheduleDebounced() // re-dirtied during flush — restart the window
+        } else {
+          const resolve = this.resolvePending
+          this.resolvePending = null
+          this.pending = null
+          resolve?.()
+        }
+      })
+    }, this.debounceMs)
   }
 
   private async runFlush(): Promise<void> {

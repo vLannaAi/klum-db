@@ -41,12 +41,19 @@ import type {
   FederatedRetrieveResult,
   GroupMeta,
   FederationMeta,
+  InsightAutoPushConfig,
 } from './types.js'
 
 /** Reserved separator between group name and partition key in a shard vault id. */
 const SHARD_SEPARATOR = '--'
 /** Store-safe partition-key charset (single hyphens OK; '--' is the reserved separator). */
 const SAFE_PARTITION_KEY = /^[A-Za-z0-9._-]+$/
+
+/** @internal — normalize a spec's `autoPush` (boolean | config) to a config, or null when off. */
+function autoPushConfig(spec: { autoPush?: boolean | InsightAutoPushConfig }): InsightAutoPushConfig | null {
+  if (!spec.autoPush) return null
+  return spec.autoPush === true ? {} : spec.autoPush
+}
 
 function assertSafePartitionKey(partitionKey: string): void {
   if (partitionKey.length === 0) {
@@ -324,9 +331,12 @@ export class VaultGroup<T> {
     }
     this.crossVaultDerivations.push(spec as unknown as CrossVaultDerivationSpec)
     if (spec.autoPush && !this.insightAutoPush) {
+      const cfg = autoPushConfig(spec)
       const controller = new InsightAutoPush(
         (pk) => this._recomputeShardInsights(pk),
         (collection) => this.crossVaultDerivations.some((s) => s.autoPush && s.source === collection),
+        undefined,
+        cfg?.debounceMs,
       )
       this.insightAutoPush = controller
       // Trigger via the Noydb-level change stream (the runtime hook this version

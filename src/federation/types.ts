@@ -192,6 +192,14 @@ export interface CrossVaultDerivationContext {
   readonly schemaVersion: number
 }
 
+/** Tuning for auto-push-on-write (#13). */
+export interface InsightAutoPushConfig {
+  /** Reset-debounce window (ms): batch a multi-tick write burst into one re-derive. Omit = microtask coalescing. */
+  readonly debounceMs?: number
+  /** Skip auto-pushing a shard whose registry `schemaVersion` is below this. */
+  readonly minVersion?: number
+}
+
 /**
  * A push-model cross-vault derivation (#271, Insight Vault — Layer 4).
  *
@@ -216,8 +224,9 @@ export interface CrossVaultDerivationSpec<R = Record<string, unknown>, S = Recor
    * `source` collection, recompute and push that shard's summary
    * automatically (coalesced per microtask). Default off — without this the
    * derivation is explicit-refresh-only (drive it with `refreshInsights()`).
+   * Pass an object to enable debounce / minVersion tuning (#13).
    */
-  readonly autoPush?: boolean
+  readonly autoPush?: boolean | InsightAutoPushConfig
 }
 
 /** The result of `refreshInsights()`. */

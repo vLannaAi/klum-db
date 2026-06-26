@@ -14,7 +14,7 @@ function makeDerive() {
   }))
 }
 
-async function setup(opts: { autoPush: boolean; derive: ReturnType<typeof makeDerive> }) {
+async function setup(opts: { autoPush: boolean | { debounceMs?: number; minVersion?: number }; derive: ReturnType<typeof makeDerive>; templateVersion?: number }) {
   const db = await createNoydb({ store: memory(), user: 'firm', secret: 'firm-secret-12345' })
   const lobby = createLobby(db)
   lobby.withVaultTemplate('client', template)
@@ -95,5 +95,32 @@ describe('VaultGroup — Insight auto-push-on-write', () => {
     await group.whenInsightsSettled()
     expect(await readSummary(db, 'acme')).toMatchObject({ total: 10 })
     expect(await readSummary(db, 'globex')).toMatchObject({ total: 20 })
+  })
+})
+
+describe('VaultGroup — auto-push debounce (#13)', () => {
+  it('debounce batches a multi-tick burst into ONE derive', async () => {
+    const derive = makeDerive()
+    const { db, group } = await setup({ autoPush: { debounceMs: 40 }, derive })
+    // three writes spread across macrotasks, each gap < debounceMs → one batched flush
+    await group.collection('invoices').put('i1', { id: 'acme', amount: 1 } as never)
+    await new Promise((r) => setTimeout(r, 10))
+    await group.collection('invoices').put('i2', { id: 'acme', amount: 2 } as never)
+    await new Promise((r) => setTimeout(r, 10))
+    await group.collection('invoices').put('i3', { id: 'acme', amount: 3 } as never)
+    await group.whenInsightsSettled()
+    expect(derive).toHaveBeenCalledTimes(1) // batched — microtask-only would be 3
+    expect(await readSummary(db, 'acme')).toMatchObject({ count: 3, total: 6 })
+  })
+
+  it('debounce separates writes beyond the window into distinct derives', async () => {
+    const derive = makeDerive()
+    const { db, group } = await setup({ autoPush: { debounceMs: 20 }, derive })
+    await group.collection('invoices').put('i1', { id: 'acme', amount: 1 } as never)
+    await group.whenInsightsSettled()
+    await group.collection('invoices').put('i2', { id: 'acme', amount: 2 } as never)
+    await group.whenInsightsSettled()
+    expect(derive).toHaveBeenCalledTimes(2)
+    expect(await readSummary(db, 'acme')).toMatchObject({ count: 2, total: 3 })
   })
 })
