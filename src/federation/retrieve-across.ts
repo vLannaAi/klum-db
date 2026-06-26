@@ -62,7 +62,12 @@ export async function retrieveAcross<T, R>(
   }
 
   // Qualify ids so the same local id in two shards stays distinct under fusion.
-  const lists = perVault.map((pv) => pv.hits.map((h) => ({ ...h, id: pv.vault + SEP + h.id })))
+  const lists = perVault.map((pv) => {
+    if (pv.vault.includes(SEP)) {
+      throw new Error(`retrieveAcross: vault id "${pv.vault}" contains the reserved NUL separator`)
+    }
+    return pv.hits.map((h) => ({ ...h, id: pv.vault + SEP + h.id }))
+  })
   const fused = fuseRetrieval(lists, {
     ...(opts.limit !== undefined ? { limit: opts.limit } : {}),
     ...(opts.rrfK !== undefined ? { k: opts.rrfK } : {}),

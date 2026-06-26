@@ -99,6 +99,13 @@ describe('ShardedCollection.retrieve() — federated (#26)', () => {
       .rejects.toBeTruthy()
   })
 
+  it('failFast does NOT throw on schema-drift (a version filter is not a failure)', async () => {
+    // both shards are v1; minVersion:2 drifts them out — drift must NOT trip failFast
+    const { hits, skippedVaults } = await h.group.collection<Doc>('docs').retrieve('alpha', { minVersion: 2, failFast: true })
+    expect(skippedVaults.some((s) => s.vaultId === 'firm-docs--acme')).toBe(true)
+    expect(hits).toEqual([]) // resolved without throwing — that is the point
+  })
+
   it('limit + rrfK honored: limit 1 returns the single globally top-ranked hit', async () => {
     const { hits } = await h.group.collection<Doc>('docs').retrieve('alpha', { limit: 1, rrfK: 60 })
     expect(hits).toHaveLength(1)
@@ -151,5 +158,6 @@ describe('ShardedCollection.retrieve() — semantic/hybrid federation (#26)', ()
     expect(skippedVaults).toEqual([])
     expect(hits.length).toBeGreaterThan(0)
     expect(hits.map((x) => x.rank)).toEqual(hits.map((_, i) => i + 1))
+    expect(new Set(hits.map((x) => x.vault))).toEqual(new Set(['firm-docs--acme', 'firm-docs--bigco']))
   })
 })
