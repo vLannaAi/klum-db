@@ -720,25 +720,23 @@ export class ShardedQuery<T, R = T> {
     }
   }
 
-  /** @internal — joined queries don't support reactive/aggregate surfaces in v1. */
-  private assertNoJoinLegs(surface: string): void {
-    if (this.coPartitionedLegs.length || this.broadcastLegs.length) {
-      throw new CrossShardJoinError(
-        `${surface}() is not supported on a ShardedQuery with crossShardJoin/broadcastJoin ` +
-          `legs in v1. Use toArray() for joined cross-shard queries.`,
-      )
-    }
-  }
-
-  /** Returns a reactive cross-shard live query — a facade over CrossVaultLive. */
+  /**
+   * Returns a reactive cross-shard live query — a facade over CrossVaultLive.
+   *
+   * Joined queries (crossShardJoin / broadcastJoin) are supported (#14): the live
+   * value reflects the fully-joined rows. **v1 limitation:** recomputes only on
+   * writes to the primary (left) collection; writes to a co-partitioned right
+   * collection or a broadcast-dimension collection do NOT trigger a recompute —
+   * re-run the query to pick those up.
+   */
   live(options: LiveQueryOptions = {}): CrossVaultLiveQuery<R> {
-    this.assertNoJoinLegs('live')
     const bind = this.liveBinding()
     const core = new CrossVaultLive<{ records: R[]; skipped: SkippedVault[] }>({
       ...bind,
       compute: async () => {
         const { records, skippedVaults } = await this.fanoutRecords(options)
-        return { records, skipped: skippedVaults }
+        const joined = (await applyBroadcastLegs(records, this.broadcastLegs)) as R[]
+        return { records: joined, skipped: skippedVaults }
       },
       initialSnapshot: { records: [], skipped: [] },
       ...(options.debounceMs !== undefined ? { debounceMs: options.debounceMs } : {}),
@@ -753,15 +751,30 @@ export class ShardedQuery<T, R = T> {
     }
   }
 
+  /**
+   * @internal — the FanoutRecordSource for aggregate surfaces. With no join legs,
+   * returns `this` (partial-reduce-eligible, #8). With join legs, returns a
+   * toArray-backed source (fully-joined rows) and NO fanoutReduce, forcing
+   * central-reduce over the joined rows (partial-reduce can't span the central
+   * broadcast join). Used by scalar `aggregate()` and `ShardedGroupedQuery`.
+   */
+  aggregateSource(): FanoutRecordSource<R> {
+    if (!this.coPartitionedLegs.length && !this.broadcastLegs.length) return this
+    return {
+      fanoutRecords: async (o) => {
+        const { results, skippedVaults } = await this.toArray(o)
+        return { records: results, skippedVaults }
+      },
+    }
+  }
+
   /** One-shot distributed aggregate — central reduce over all shard records. */
   aggregate<Spec extends AggregateSpec>(spec: Spec): CrossVaultAggregation<R, Spec> {
-    this.assertNoJoinLegs('aggregate')
-    return new CrossVaultAggregation<R, Spec>(this, spec, this.liveBinding())
+    return new CrossVaultAggregation<R, Spec>(this.aggregateSource(), spec, this.liveBinding())
   }
 
   /** Begin a grouped cross-shard aggregate. */
   groupBy<F extends string>(field: F): ShardedGroupedQuery<T, R, F> {
-    this.assertNoJoinLegs('groupBy')
     return new ShardedGroupedQuery<T, R, F>(this, field)
   }
 }
@@ -775,7 +788,7 @@ export class ShardedGroupedQuery<T, R, F extends string> {
 
   aggregate<Spec extends AggregateSpec>(spec: Spec): CrossVaultGroupedAggregation<R, F, Spec> {
     return new CrossVaultGroupedAggregation<R, F, Spec>(
-      { fanoutRecords: (o) => this.query.fanoutRecords(o) } satisfies FanoutRecordSource<R>,
+      this.query.aggregateSource(),
       this.field,
       spec,
       this.query.liveBinding(),

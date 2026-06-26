@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { NoydbError, ConflictError } from '@noy-db/hub'
 import { CrossShardJoinError } from '@noy-db/hub/kernel'
+import { sum, count } from '@noy-db/hub/aggregate'
 import {
   applyBroadcastLegs,
   resetBroadcastWarnings,
@@ -286,27 +287,92 @@ describe('broadcastJoin miss', () => {
   })
 })
 
-describe('deferred surfaces throw when join legs are present', () => {
-  it('live() throws CrossShardJoinError with a co-partitioned leg', async () => {
-    const { firm } = await harness()
-    expect(() =>
-      firm.collection('invoices').query().crossShardJoin('customerId', { as: 'c' }).live(),
-    ).toThrow(CrossShardJoinError)
-  })
+describe('joined cross-shard live surface (#14)', () => {
+  // poll helper (never assert on fixed ticks)
+  const waitFor = async (pred: () => boolean, timeout = 2000) => {
+    const start = Date.now()
+    while (!pred()) { if (Date.now() - start > timeout) throw new Error('waitFor timeout'); await new Promise((r) => setTimeout(r, 5)) }
+  }
 
-  it('aggregate() throws CrossShardJoinError with a broadcast leg', async () => {
+  it('live() over a broadcast-joined query carries the dimension and reacts to a left write', async () => {
+    resetBroadcastWarnings()
     const { db, firm } = await harness()
-    const dims = await db.openVault('dimensions')
-    const cur = dims.collection<{ id: string }>('currencies')
-    expect(() =>
-      firm.collection('invoices').query().broadcastJoin('currencyCode', { as: 'fx', from: cur }).aggregate({ total: 'count' } as never),
-    ).toThrow(CrossShardJoinError)
+    const currencies = (await db.openVault('dimensions')).collection<{ id: string; symbol: string }>('currencies')
+    await currencies.put('usd', { id: 'usd', symbol: '$' })
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c1', { id: 'c1', name: 'A' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c1', amount: 100, status: 'paid', currencyCode: 'usd' })
+
+    const lq = firm.collection('invoices').query()
+      .broadcastJoin('currencyCode', { as: 'fx', from: currencies })
+      .live()
+    await lq.ready
+    const row = lq.value.find((r) => (r as Invoice).id === 'i1') as Record<string, unknown>
+    expect((row.fx as { symbol: string }).symbol).toBe('$') // joined dimension present
+
+    // a write to the LEFT collection triggers a recompute
+    await firm.collection('invoices').put('i2', { id: 'i2', clientId: 'acme', customerId: 'c1', amount: 50, status: 'paid', currencyCode: 'usd' })
+    await waitFor(() => lq.value.length === 2)
+    expect((lq.value.find((r) => (r as Invoice).id === 'i2') as Record<string, unknown>).fx).toMatchObject({ symbol: '$' })
+    lq.stop()
   })
 
-  it('groupBy() throws CrossShardJoinError with a join leg', async () => {
+  it('co-partitioned-joined live() carries the joined right record', async () => {
     const { firm } = await harness()
-    expect(() =>
-      firm.collection('invoices').query().crossShardJoin('customerId', { as: 'c' }).groupBy('status'),
-    ).toThrow(CrossShardJoinError)
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c-acme', { id: 'c-acme', name: 'Acme Co' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c-acme', amount: 100, status: 'overdue' })
+
+    const lq = firm.collection('invoices').query().crossShardJoin('customerId', { as: 'customer' }).live()
+    await lq.ready
+    expect(((lq.value[0] as Record<string, unknown>).customer as Customer).name).toBe('Acme Co')
+    lq.stop()
+  })
+})
+
+describe('joined cross-shard aggregate surfaces (#14)', () => {
+  it('scalar aggregate reduces over co-partitioned-joined rows (central)', async () => {
+    const { firm } = await harness()
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c-acme', { id: 'c-acme', name: 'Acme Co' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c-acme', amount: 100, status: 'overdue' })
+    const glx = await firm.createShard('globex')
+    await glx.collection<Customer>('customers').put('c-glx', { id: 'c-glx', name: 'Globex' })
+    await firm.collection('invoices').put('i2', { id: 'i2', clientId: 'globex', customerId: 'c-glx', amount: 200, status: 'overdue' })
+
+    const { result, skippedVaults } = await firm.collection('invoices').query()
+      .crossShardJoin('customerId', { as: 'customer' })
+      .aggregate({ total: sum('amount'), n: count() }).run()
+    expect(skippedVaults).toEqual([])
+    expect(result).toEqual({ total: 300, n: 2 })
+  })
+
+  it('grouped aggregate reduces over joined rows per bucket', async () => {
+    const { firm } = await harness()
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c1', { id: 'c1', name: 'A' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c1', amount: 100, status: 'overdue' })
+    await firm.collection('invoices').put('i2', { id: 'i2', clientId: 'acme', customerId: 'c1', amount: 40, status: 'paid' })
+
+    const { results } = await firm.collection('invoices').query()
+      .crossShardJoin('customerId', { as: 'customer' })
+      .groupBy('status').aggregate({ total: sum('amount') }).run()
+    const overdue = results.find((r) => (r as { status: string }).status === 'overdue')
+    expect((overdue as { total: number }).total).toBe(100)
+  })
+
+  it('scalar aggregate over broadcast-joined rows reduces the joined row set', async () => {
+    resetBroadcastWarnings()
+    const { db, firm } = await harness()
+    const currencies = (await db.openVault('dimensions')).collection<{ id: string; symbol: string }>('currencies')
+    await currencies.put('usd', { id: 'usd', symbol: '$' })
+    const acme = await firm.createShard('acme')
+    await acme.collection<Customer>('customers').put('c1', { id: 'c1', name: 'A' })
+    await firm.collection('invoices').put('i1', { id: 'i1', clientId: 'acme', customerId: 'c1', amount: 70, status: 'paid', currencyCode: 'usd' })
+
+    const { result } = await firm.collection('invoices').query()
+      .broadcastJoin('currencyCode', { as: 'fx', from: currencies })
+      .aggregate({ total: sum('amount'), n: count() }).run()
+    expect(result).toEqual({ total: 70, n: 1 })
   })
 })
