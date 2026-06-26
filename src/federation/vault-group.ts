@@ -17,6 +17,7 @@ import { CrossVaultLive } from './cross-vault-live.js'
 import { InsightAutoPush } from './insight-auto-push.js'
 import { CrossVaultAggregation, CrossVaultGroupedAggregation } from './aggregate-across.js'
 import type { FanoutRecordSource, LiveBinding } from './aggregate-across.js'
+import { retrieveAcross } from './retrieve-across.js'
 import type { AggregateSpec } from '@noy-db/hub/kernel'
 import { reduceToPartial } from './partial-reduce.js'
 import type { PartialState } from './partial-reduce.js'
@@ -35,6 +36,8 @@ import type {
   RefreshInsightsResult,
   MigrationStatusRow,
   SchemaRolloutResult,
+  FederatedRetrieveOptions,
+  FederatedRetrieveResult,
 } from './types.js'
 
 /** Reserved separator between group name and partition key in a shard vault id. */
@@ -509,6 +512,18 @@ export class ShardedCollection<T, R = T> {
   /** Begin a cross-shard fan-out query. */
   query(): ShardedQuery<T, R> {
     return new ShardedQuery<T, R>(this.group, this.collectionName, [])
+  }
+
+  /**
+   * Cross-vault federated retrieval (#26): scatter-gather across all eligible
+   * shards — each shard runs its own trusted-tier `retrieve()`, then results are
+   * RRF-fused by rank only (no cross-vault statistics cross the DEK boundary).
+   * Every hit carries its originating `vault`. An unreachable, schema-drifted, or
+   * un-indexed shard is skipped (`skippedVaults`); pass `failFast` to re-throw
+   * the first per-shard error instead.
+   */
+  async retrieve(query: string, opts: FederatedRetrieveOptions = {}): Promise<FederatedRetrieveResult<R>> {
+    return retrieveAcross<T, R>(this.group, this.collectionName, query, opts)
   }
 }
 

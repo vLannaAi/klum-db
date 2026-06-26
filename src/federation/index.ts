@@ -27,4 +27,7 @@ export type {
   RefreshInsightsResult,
   MigrationStatusRow,
   SchemaRolloutResult,
+  FederatedRetrieveOptions,
+  FederatedRetrieveHit,
+  FederatedRetrieveResult,
 } from './types.js'

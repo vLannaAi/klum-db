@@ -8,7 +8,7 @@ import type { MergeStrategy } from '../interchange/merge-compartment.js'
 import type { FieldAuthorityPolicy } from '../interchange/field-authority.js'
 import type { Vault } from '@noy-db/hub/kernel'
 import type { Collection } from '@noy-db/hub/kernel'
-import type { Operator } from '@noy-db/hub/kernel'
+import type { Operator, RetrieveHit } from '@noy-db/hub/kernel'
 import type { LiveQuery } from '@noy-db/hub/kernel'
 import type { LiveAggregation, AggregateResult, AggregateSpec } from '@noy-db/hub/kernel'
 import type { IndexDef } from '@noy-db/hub/kernel'
@@ -102,6 +102,35 @@ export interface SkippedVault {
 /** The result of a cross-shard fan-out read. */
 export interface FanoutResult<R> {
   readonly results: R[]
+  readonly skippedVaults: SkippedVault[]
+}
+
+/** Options for cross-vault federated retrieval (#26). Extends the fan-out base. */
+export interface FederatedRetrieveOptions extends FanoutQueryOptions {
+  readonly mode?: 'lexical' | 'semantic' | 'hybrid'
+  readonly limit?: number
+  readonly minScore?: number
+  readonly fields?: readonly string[]
+  readonly match?: 'any' | 'all'
+  readonly prefix?: boolean
+  readonly snippetWindow?: number
+  readonly includeRecord?: boolean
+  /** Payload filter applied per-vault (retrieve ∩ where), rebuilt into each shard's `within`. */
+  readonly where?: ReadonlyArray<readonly [field: string, op: Operator, value: unknown]>
+  /** RRF constant; default 60. */
+  readonly rrfK?: number
+  /** Re-throw a per-shard retrieve() failure instead of skipping it. */
+  readonly failFast?: boolean
+}
+
+/** A fused hit carrying the originating shard (provenance). */
+export interface FederatedRetrieveHit<R> extends RetrieveHit<R> {
+  readonly vault: string
+}
+
+/** Result of `ShardedCollection.retrieve()`. */
+export interface FederatedRetrieveResult<R> {
+  readonly hits: FederatedRetrieveHit<R>[]
   readonly skippedVaults: SkippedVault[]
 }
 
