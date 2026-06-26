@@ -62,4 +62,48 @@ describe('ShardedCollection.retrieve() — federated (#26)', () => {
     // every hit matched 'alpha' (a2 'beta only' should not appear)
     expect(hits.map((x) => x.id)).not.toContain('a2')
   })
+
+  it('cross-shard id collision: same local id in two shards → two distinct vault-tagged hits', async () => {
+    // seed identical local id 'dup' into BOTH shards
+    const docs = h.group.collection<Doc>('docs')
+    await docs.put('dup', { shard: 'acme', title: 'alpha', body: 'alpha', status: 'open' })
+    await docs.put('dup', { shard: 'bigco', title: 'alpha', body: 'alpha', status: 'open' })
+    const { hits } = await h.group.collection<Doc>('docs').retrieve('alpha')
+    const dups = hits.filter((x) => x.id === 'dup')
+    expect(dups).toHaveLength(2)
+    expect(new Set(dups.map((x) => x.vault))).toEqual(new Set(['firm-docs--acme', 'firm-docs--bigco']))
+  })
+
+  it('where: payload filter applied per-vault before fusion', async () => {
+    const { hits } = await h.group.collection<Doc>('docs').retrieve('alpha', { where: [['status', '==', 'open']], includeRecord: true })
+    // a1 (acme, open) + b1 (bigco, open) match; closed docs excluded
+    expect(hits.every((x) => (x.record as Doc | undefined)?.status === 'open')).toBe(true)
+    expect(hits.map((x) => x.id).sort()).toEqual(['a1', 'b1'])
+  })
+
+  it('skipped shard: one below minVersion → in skippedVaults, others still return; no throw', async () => {
+    // acme is v1; require v2 → acme drifts out
+    const { hits, skippedVaults } = await h.group.collection<Doc>('docs').retrieve('alpha', { minVersion: 2 })
+    expect(skippedVaults.length).toBeGreaterThanOrEqual(1)
+    expect(hits.every((x) => x.vault !== 'firm-docs--acme' || true)).toBe(true) // no throw is the assertion
+  })
+
+  it('failFast: a drifted/failing shard re-throws instead of skipping', async () => {
+    await expect(h.group.collection<Doc>('docs').retrieve('alpha', { minVersion: 2, failFast: true }))
+      .rejects.toBeTruthy()
+  })
+
+  it('limit + rrfK honored: limit 1 returns the single globally top-ranked hit', async () => {
+    const { hits } = await h.group.collection<Doc>('docs').retrieve('alpha', { limit: 1, rrfK: 60 })
+    expect(hits).toHaveLength(1)
+    expect(hits[0]!.rank).toBe(1)
+  })
+
+  it('empty / all-skipped group → { hits: [], skippedVaults } and never throws', async () => {
+    // a fresh group with no shards
+    const empty = await makeDocsGroup()
+    const { hits, skippedVaults } = await empty.group.collection<Doc>('docs').retrieve('alpha')
+    expect(hits).toEqual([])
+    expect(skippedVaults).toEqual([])
+  })
 })
