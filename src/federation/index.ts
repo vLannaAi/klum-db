@@ -30,4 +30,6 @@ export type {
   FederatedRetrieveOptions,
   FederatedRetrieveHit,
   FederatedRetrieveResult,
+  GroupMeta,
+  FederationMeta,
 } from './types.js'

@@ -12,6 +12,20 @@ import type { Operator, RetrieveHit } from '@noy-db/hub/kernel'
 import type { LiveQuery } from '@noy-db/hub/kernel'
 import type { LiveAggregation, AggregateResult, AggregateSpec } from '@noy-db/hub/kernel'
 import type { IndexDef } from '@noy-db/hub/kernel'
+import type { VaultMeta } from '@noy-db/hub/kernel'
+
+/** A federation group's own descriptive metadata (reuses the noy-db VaultMeta shape). */
+export type GroupMeta = VaultMeta
+
+/** Federation-level metadata: the group's own meta + each member vault's vaultMeta. */
+export interface FederationMeta {
+  readonly meta: GroupMeta | undefined
+  readonly vaults: ReadonlyArray<{
+    readonly vaultId: string
+    readonly partitionKey: string
+    readonly meta: VaultMeta | undefined
+  }>
+}
 
 /**
  * A schema blueprint for a class of shard vaults. `configure` is
@@ -72,6 +86,8 @@ export interface VaultGroupOptions<T> {
    * Zero cost for shards never opened. Default `false` (use `rolloutSchema`).
    */
   readonly cutoverOnOpen?: boolean
+  /** Descriptive group-level metadata (label/description/icon) for UIs. Descriptive-only. */
+  readonly meta?: GroupMeta
 }
 
 /** Result of `VaultGroup.rolloutSchema` (#271 active batch runner). */
