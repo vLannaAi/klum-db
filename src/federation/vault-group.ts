@@ -7,6 +7,7 @@
 import type { Noydb } from '@noy-db/hub/kernel'
 import type { Vault } from '@noy-db/hub/kernel'
 import type { Collection } from '@noy-db/hub/kernel'
+import type { VaultMeta } from '@noy-db/hub/kernel'
 import { StateManagementVault } from './state-vault.js'
 import { CrossShardJoinError, DataResidencyError, ReservedVaultNameError, ShardProvisioningError, UnknownShardError, ValidationError } from '@noy-db/hub/kernel'
 import { STATE_VAULT_NAME } from './constants.js'
@@ -39,6 +40,7 @@ import type {
   FederatedRetrieveOptions,
   FederatedRetrieveResult,
   GroupMeta,
+  FederationMeta,
 } from './types.js'
 
 /** Reserved separator between group name and partition key in a shard vault id. */
@@ -120,6 +122,31 @@ export class VaultGroup<T> {
     await this.registry.list()
     const rows = this.registry.query().toArray() // toArray() is synchronous
     return rows.filter((r) => r.group === this.name)
+  }
+
+  /**
+   * Federation-level descriptive metadata (#27): this group's `meta` plus each
+   * member vault's `vaultMeta` (read via `getMeta()`). Best-effort per shard — a
+   * shard that fails to open yields `meta: undefined` for that entry, never
+   * throwing. Member meta is transient per-open (noy-db sets it at `openVault`,
+   * does not persist it); this surfaces whatever each vault was opened with.
+   */
+  async federationMeta(): Promise<FederationMeta> {
+    const rows = await this.allRows()
+    const vaults = await Promise.all(
+      rows.map(async (row) => {
+        let meta: VaultMeta | undefined
+        try {
+          const vault = await this.db.openVault(row.vaultId)
+          this.template.configure(vault)
+          meta = vault.getMeta()
+        } catch {
+          meta = undefined
+        }
+        return { vaultId: row.vaultId, partitionKey: row.partitionKey, meta }
+      }),
+    )
+    return { meta: this.meta, vaults }
   }
 
   /**

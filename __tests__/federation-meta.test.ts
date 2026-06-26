@@ -44,4 +44,38 @@ describe('federation metadata (#27)', () => {
     const without = await makeGroup()
     expect(without.group.meta).toBeUndefined()
   })
+
+  it('federationMeta() returns group meta + each member vault meta (round-trips getMeta)', async () => {
+    const { db, group } = await makeGroup({ label: 'Firm Docs' })
+    // give acme a vault meta on the SAME db BEFORE first put so first-wins caching retains it
+    await db.openVault('firm-docs--acme', { meta: { label: 'Acme', icon: 'building' } } as never)
+    // create two shards; acme reuses the cached vault (with meta), bigco gets none
+    const docs = group.collection<Doc>('docs')
+    await docs.put('a1', { shard: 'acme', body: 'x' })
+    await docs.put('b1', { shard: 'bigco', body: 'y' })
+
+    const fm = await group.federationMeta()
+    expect(fm.meta).toEqual({ label: 'Firm Docs' })
+    const acme = fm.vaults.find((v) => v.vaultId === 'firm-docs--acme')
+    const bigco = fm.vaults.find((v) => v.vaultId === 'firm-docs--bigco')
+    expect(acme?.meta).toEqual({ label: 'Acme', icon: 'building' })
+    expect(acme?.partitionKey).toBe('acme')
+    expect(bigco?.meta).toBeUndefined() // opened without meta
+  })
+
+  it('federationMeta() is best-effort: an unprovisioned registry row → meta undefined, no throw', async () => {
+    const { db, group } = await makeGroup()
+    await group.collection<Doc>('docs').put('a1', { shard: 'acme', body: 'x' })
+    // divergent registry row: points at a vault that was never provisioned
+    const registry = (await db.openVault('state')).collection<VaultRegistryRow>('vault-registry')
+    await registry.put('firm-docs--ghost', {
+      vaultId: 'firm-docs--ghost', partitionKey: 'ghost',
+      templateName: 't', schemaVersion: 1, createdAt: 1, group: 'firm-docs',
+    } as never)
+
+    const fm = await group.federationMeta() // must not throw
+    const ghost = fm.vaults.find((v) => v.vaultId === 'firm-docs--ghost')
+    expect(ghost).toBeDefined()
+    expect(ghost?.meta).toBeUndefined()
+  })
 })
