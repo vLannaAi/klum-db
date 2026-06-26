@@ -207,7 +207,7 @@ export type {
   FanoutQueryOptions, FanoutResult, SkippedVault,
   CrossVaultLiveQuery, CrossVaultLiveAggregation, LiveQueryOptions,
   SchemaManifestRow, DeploymentEvent, CapturedBlueprint,
-  CrossVaultDerivationSpec, CrossVaultDerivationContext, RefreshInsightsResult,
+  CrossVaultDerivationSpec, InsightAutoPushConfig, CrossVaultDerivationContext, RefreshInsightsResult,
   MigrationStatusRow, SchemaRolloutResult,
   FederatedRetrieveOptions, FederatedRetrieveHit, FederatedRetrieveResult,
   GroupMeta, FederationMeta,
