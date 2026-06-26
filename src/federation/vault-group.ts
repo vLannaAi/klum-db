@@ -741,15 +741,30 @@ export class ShardedQuery<T, R = T> {
     }
   }
 
+  /**
+   * @internal — the FanoutRecordSource for aggregate surfaces. With no join legs,
+   * returns `this` (partial-reduce-eligible, #8). With join legs, returns a
+   * toArray-backed source (fully-joined rows) and NO fanoutReduce, forcing
+   * central-reduce over the joined rows (partial-reduce can't span the central
+   * broadcast join). Used by scalar `aggregate()` and `ShardedGroupedQuery`.
+   */
+  aggregateSource(): FanoutRecordSource<R> {
+    if (!this.coPartitionedLegs.length && !this.broadcastLegs.length) return this
+    return {
+      fanoutRecords: async (o) => {
+        const { results, skippedVaults } = await this.toArray(o)
+        return { records: results, skippedVaults }
+      },
+    }
+  }
+
   /** One-shot distributed aggregate — central reduce over all shard records. */
   aggregate<Spec extends AggregateSpec>(spec: Spec): CrossVaultAggregation<R, Spec> {
-    this.assertNoJoinLegs('aggregate')
-    return new CrossVaultAggregation<R, Spec>(this, spec, this.liveBinding())
+    return new CrossVaultAggregation<R, Spec>(this.aggregateSource(), spec, this.liveBinding())
   }
 
   /** Begin a grouped cross-shard aggregate. */
   groupBy<F extends string>(field: F): ShardedGroupedQuery<T, R, F> {
-    this.assertNoJoinLegs('groupBy')
     return new ShardedGroupedQuery<T, R, F>(this, field)
   }
 }
@@ -763,7 +778,7 @@ export class ShardedGroupedQuery<T, R, F extends string> {
 
   aggregate<Spec extends AggregateSpec>(spec: Spec): CrossVaultGroupedAggregation<R, F, Spec> {
     return new CrossVaultGroupedAggregation<R, F, Spec>(
-      { fanoutRecords: (o) => this.query.fanoutRecords(o) } satisfies FanoutRecordSource<R>,
+      this.query.aggregateSource(),
       this.field,
       spec,
       this.query.liveBinding(),
