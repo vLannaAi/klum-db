@@ -88,8 +88,14 @@ describe('ShardedCollection.retrieve() — federated (#26)', () => {
     expect(hits.every((x) => x.vault !== 'firm-docs--acme' || true)).toBe(true) // no throw is the assertion
   })
 
-  it('failFast: a drifted/failing shard re-throws instead of skipping', async () => {
-    await expect(h.group.collection<Doc>('docs').retrieve('alpha', { minVersion: 2, failFast: true }))
+  it('per-shard retrieve() error (semantic without embeddings) → skippedVaults, no throw', async () => {
+    const { hits, skippedVaults } = await h.group.collection<Doc>('docs').retrieve('alpha', { mode: 'semantic' })
+    expect(hits).toEqual([])
+    expect(skippedVaults.map((s) => s.reason)).toContain('error')
+  })
+
+  it('failFast: a per-shard retrieve() error re-throws instead of skipping', async () => {
+    await expect(h.group.collection<Doc>('docs').retrieve('alpha', { mode: 'semantic', failFast: true }))
       .rejects.toBeTruthy()
   })
 

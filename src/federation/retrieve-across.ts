@@ -24,17 +24,6 @@ export async function retrieveAcross<T, R>(
     ...(opts.failFast !== undefined ? { failFast: opts.failFast } : {}),
   })
 
-  // failFast: a shard that drifted out of the eligible set (schema-drift or
-  // unprovisioned) is as fatal as a per-shard retrieve() error when failFast
-  // is set. Re-throw with a descriptive message so callers can distinguish it
-  // from a normal skip.
-  if (opts.failFast && skipped.length > 0) {
-    const first = skipped[0]!
-    throw first.error ?? new Error(
-      `retrieve failFast: vault "${first.vaultId}" skipped (${first.reason})`,
-    )
-  }
-
   const across = await group.db.queryAcross<RetrieveHit<R>[]>(
     eligible.map((r) => r.vaultId),
     async (vault) => {
