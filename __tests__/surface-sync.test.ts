@@ -17,6 +17,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
+import { withCargo } from '@noy-db/hub/cargo'
 import { memory } from '@noy-db/to-memory'
 import { StateManagementVault } from '../src/federation/state-vault.js'
 import type { SurfaceRow } from '../src/federation/types.js'
@@ -60,7 +61,7 @@ describe('exportSurface / applySurface — scoped field-projected sync', () => {
     const surface = await buildAgreedSurface(pushDef)
 
     // Source vault: clients + secret (not in surface)
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const sourceVault = await sourceDb.openVault('source')
     const clients = sourceVault.collection<Client>('clients')
     await clients.put('c1', { id: 'c1', name: 'Alice', phone: '+1-555-0101' })
@@ -139,7 +140,7 @@ describe('exportSurface / applySurface — scoped field-projected sync', () => {
     }
     const surface = await buildAgreedSurface(pullDef)
 
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const sourceVault = await sourceDb.openVault('source')
     await sourceVault.collection<Client>('clients').put('c1', { id: 'c1', name: 'Alice', phone: '+1-555-0101' })
 
@@ -167,7 +168,7 @@ describe('exportSurface — ensures only surface.collections are in the bundle',
       conflictPolicy: { strategy: 'take-incoming' },
     })
 
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const sourceVault = await sourceDb.openVault('source')
     await sourceVault.collection<Client>('clients').put('c1', { id: 'c1', name: 'Alice', phone: '555' })
     await sourceVault.collection<Secret>('secret').put('s1', { id: 's1', data: 'SENSITIVE' })
@@ -202,7 +203,7 @@ describe('Lobby Surface API — delegate to surface.ts helpers', () => {
     })
 
     // Source Lobby
-    const srcDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const srcDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const srcLobby = createLobby(srcDb)
     interface Order { id: string; amount: number; note: string }
     const srcVault = await srcDb.openVault('orders')

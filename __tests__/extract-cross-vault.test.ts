@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
+import { withCargo } from '@noy-db/hub/cargo'
 import { memory } from '@noy-db/to-memory'
 import {
   walkCrossVaultClosure,
@@ -28,8 +29,8 @@ async function buildFixture(): Promise<{
   clientDb: Noydb
   openVault: (name: string) => ReturnType<Noydb['openVault']>
 }> {
-  const dirDb = await createNoydb({ store: memory(), user: 'admin', secret: 'dir-secret' })
-  const clientDb = await createNoydb({ store: memory(), user: 'admin', secret: 'client-secret' })
+  const dirDb = await createNoydb({ store: memory(), user: 'admin', secret: 'dir-secret', cargoStrategy: withCargo() })
+  const clientDb = await createNoydb({ store: memory(), user: 'admin', secret: 'client-secret', cargoStrategy: withCargo() })
 
   // --- directory vault ---
   const dirVault = await dirDb.openVault('directory')

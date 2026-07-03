@@ -14,6 +14,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
+import { withCargo } from '@noy-db/hub/cargo'
 import { extractPartition } from '@noy-db/hub/bundle'
 import { memory } from '@noy-db/to-memory'
 import { mergeCompartment } from '../src/interchange/merge-compartment.js'
@@ -31,7 +32,7 @@ interface LegalEntity { id: string; juristicName: string; nickname: string }
  * bundleBytes + transferKey.
  */
 async function buildBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+  const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source')
   const clients = source.collection<Client>('clients')
   await clients.put('c1', { id: 'c1', name: 'A' })
@@ -129,7 +130,7 @@ describe('mergeCompartment — lww-by-ts', () => {
     await clients.put('c4', { id: 'c4', name: 'D' })
 
     // Now build source (writes c1 AFTER receiver's c1 → incoming is newer)
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source')
     const srcClients = source.collection<Client>('clients')
     await srcClients.put('c1', { id: 'c1', name: 'A' })
@@ -159,7 +160,7 @@ describe('mergeCompartment — lww-by-ts', () => {
 
   it('incoming older than local → c1 skipped (local wins)', async () => {
     // Write receiver c1 AFTER building the incoming bundle → local _ts is newer
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source')
     const srcClients = source.collection<Client>('clients')
     await srcClients.put('c1', { id: 'c1', name: 'A' })
@@ -306,7 +307,7 @@ describe('mergeCompartment — per-collection strategy map', () => {
 describe('mergeCompartment — provenance preservation (FR-5)', () => {
   it('threads incoming _source through to receiver put when provenance:true', async () => {
     // Source vault: clients collection with provenance:true; c1 written with source:'firm-A'
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source')
     const srcClients = source.collection<Client>('clients', { provenance: true })
     await srcClients.put('c1', { id: 'c1', name: 'A' }, { source: 'firm-A' })
@@ -348,7 +349,7 @@ describe('mergeCompartment — provenance preservation (FR-5)', () => {
  * Returns { bundleBytes, transferKey }.
  */
 async function buildFr4Bundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-fa', secret: 'src-fa-secret-123' })
+  const sourceDb = await createNoydb({ store: memory(), user: 'src-fa', secret: 'src-fa-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-fa')
   const clients = source.collection<LegalEntity>('clients', { provenance: true })
   await clients.put('c1', { id: 'c1', juristicName: 'New Co', nickname: 'theirNick' }, {
@@ -449,7 +450,7 @@ describe('mergeCompartment — field-authority (FR-4)', () => {
 describe('mergeCompartment — origin _sourceTs preservation (FR-4 Q2)', () => {
   it('take-incoming preserves the incoming origin _sourceTs (not merge time)', async () => {
     // incoming c1 written with {source:'firm-A', sourceTs:'2020-05-05T00:00:00.000Z'}
-    const sourceDb = await createNoydb({ store: memory(), user: 'src-sts', secret: 'src-sts-secret-123' })
+    const sourceDb = await createNoydb({ store: memory(), user: 'src-sts', secret: 'src-sts-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source-sts')
     const srcClients = source.collection<Client>('clients', { provenance: true })
     await srcClients.put('c1', { id: 'c1', name: 'A-incoming' }, {
