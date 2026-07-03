@@ -49,10 +49,10 @@
     "check:architecture": "node scripts/check-architecture.mjs"
   },
   "peerDependencies": {
-    "@noy-db/as-xlsx": "^0.2.0-pre.29",
-    "@noy-db/hub": "^0.2.0-pre.29",
-    "@noy-db/in-devtools": "^0.2.0-pre.29",
-    "@noy-db/to-meter": "^0.2.0-pre.29"
+    "@noy-db/as-xlsx": "^0.3.0-pre.1",
+    "@noy-db/hub": "^0.3.0-pre.1",
+    "@noy-db/in-devtools": "^0.3.0-pre.1",
+    "@noy-db/to-meter": "^0.3.0-pre.1"
   },
   "peerDependenciesMeta": {
     "@noy-db/in-devtools": { "optional": true },
@@ -60,12 +60,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
-    "@noy-db/as-xlsx": "0.2.0-pre.30",
-    "@noy-db/as-zip": "0.2.0-pre.30",
-    "@noy-db/hub": "0.2.0-pre.30",
-    "@noy-db/in-devtools": "0.2.0-pre.30",
-    "@noy-db/to-memory": "0.2.0-pre.30",
-    "@noy-db/to-meter": "0.2.0-pre.30",
+    "@noy-db/as-xlsx": "0.3.0-pre.1",
+    "@noy-db/as-zip": "0.3.0-pre.1",
+    "@noy-db/hub": "0.3.0-pre.1",
+    "@noy-db/in-devtools": "0.3.0-pre.1",
+    "@noy-db/to-memory": "0.3.0-pre.1",
+    "@noy-db/to-meter": "0.3.0-pre.1",
     "@types/node": "^22.0.0",
     "eslint": "^9.18.0",
     "tsup": "^8.4.0",
