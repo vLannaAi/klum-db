@@ -6,13 +6,13 @@
  */
 import type { MergeStrategy } from '../interchange/merge-compartment.js'
 import type { FieldAuthorityPolicy } from '../interchange/field-authority.js'
-import type { Vault } from '@noy-db/hub/kernel'
-import type { Collection } from '@noy-db/hub/kernel'
-import type { Operator, RetrieveHit } from '@noy-db/hub/kernel'
-import type { LiveQuery } from '@noy-db/hub/kernel'
-import type { LiveAggregation, AggregateResult, AggregateSpec } from '@noy-db/hub/kernel'
-import type { IndexDef } from '@noy-db/hub/kernel'
-import type { VaultMeta } from '@noy-db/hub/kernel'
+import type { Vault } from '@noy-db/hub/cargo'
+import type { Collection } from '@noy-db/hub/cargo'
+import type { Operator, RetrieveHit } from '@noy-db/hub/cargo'
+import type { LiveQuery } from '@noy-db/hub/cargo'
+import type { LiveAggregation, AggregateResult, AggregateSpec } from '@noy-db/hub/cargo'
+import type { IndexDef } from '@noy-db/hub/cargo'
+import type { VaultMeta } from '@noy-db/hub/cargo'
 
 /** A federation group's own descriptive metadata (reuses the noy-db VaultMeta shape). */
 export type GroupMeta = VaultMeta

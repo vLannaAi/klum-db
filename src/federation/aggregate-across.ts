@@ -5,9 +5,9 @@
  * so avg/mean values are computed over the full union, not as avg-of-avgs.
  * Spec: docs/superpowers/specs/2026-06-07-cross-vault-live-and-aggregate-design.md.
  */
-import { reduceRecords } from '@noy-db/hub/kernel'
-import { groupAndReduce } from '@noy-db/hub/kernel'
-import type { AggregateResult, AggregateSpec } from '@noy-db/hub/kernel'
+import { reduceRecords } from '@noy-db/hub/cargo'
+import { groupAndReduce } from '@noy-db/hub/cargo'
+import type { AggregateResult, AggregateSpec } from '@noy-db/hub/cargo'
 import type {
   FanoutQueryOptions,
   SkippedVault,
@@ -17,7 +17,7 @@ import type {
   CrossVaultLiveQuery,
 } from './types.js'
 import { CrossVaultLive } from './cross-vault-live.js'
-import type { ChangeEvent } from '@noy-db/hub/kernel'
+import type { ChangeEvent } from '@noy-db/hub/cargo'
 import { canPartialReduce, mergePartials, finalizePartial } from './partial-reduce.js'
 import type { PartialState } from './partial-reduce.js'
 

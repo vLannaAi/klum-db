@@ -1,5 +1,5 @@
 import type { InspectableContainer } from '@noy-db/in-devtools'
-import type { AccessibleVault, Vault, WriteHook, WriteConflict, WriteQueue, Unsubscribe } from '@noy-db/hub'
+import type { AccessibleVault, Vault, WriteHook, WriteConflict, WriteQueue, Unsubscribe } from '@noy-db/hub/cargo'
 import type { VaultGroup } from './vault-group.js'
 
 /**

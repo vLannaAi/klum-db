@@ -11,8 +11,8 @@
  *
  * @module
  */
-import type { Vault } from '@noy-db/hub'
-import { diffVault } from '@noy-db/hub'
+import type { Vault } from '@noy-db/hub/cargo'
+import { diffVault } from '@noy-db/hub/cargo'
 import { decryptExtractedPartition, type DecryptedRecord } from '@noy-db/hub/bundle'
 import {
   resolveRecordByFieldAuthority,

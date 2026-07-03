@@ -44,8 +44,9 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
-    "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint src/ && pnpm check:architecture",
+    "typecheck": "tsc --noEmit",
+    "check:architecture": "node scripts/check-architecture.mjs"
   },
   "peerDependencies": {
     "@noy-db/as-xlsx": "^0.2.0-pre.29",

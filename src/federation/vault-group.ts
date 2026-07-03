@@ -4,12 +4,12 @@
  * routing. Spec:
  * docs/superpowers/specs/2026-06-07-mvf-vaultgroup-routing-mvp-design.md.
  */
-import type { Noydb } from '@noy-db/hub/kernel'
-import type { Vault } from '@noy-db/hub/kernel'
-import type { Collection } from '@noy-db/hub/kernel'
-import type { VaultMeta } from '@noy-db/hub/kernel'
+import type { Noydb } from '@noy-db/hub/cargo'
+import type { Vault } from '@noy-db/hub/cargo'
+import type { Collection } from '@noy-db/hub/cargo'
+import type { VaultMeta } from '@noy-db/hub/cargo'
 import { StateManagementVault } from './state-vault.js'
-import { CrossShardJoinError, DataResidencyError, ReservedVaultNameError, ShardProvisioningError, UnknownShardError, ValidationError } from '@noy-db/hub/kernel'
+import { CrossShardJoinError, DataResidencyError, ReservedVaultNameError, ShardProvisioningError, UnknownShardError, ValidationError } from '@noy-db/hub/cargo'
 import { STATE_VAULT_NAME } from './constants.js'
 import { classifyShardSkip } from './classify-skip.js'
 import { applyBroadcastLegs } from './cross-shard-join.js'
@@ -19,7 +19,7 @@ import { InsightAutoPush } from './insight-auto-push.js'
 import { CrossVaultAggregation, CrossVaultGroupedAggregation } from './aggregate-across.js'
 import type { FanoutRecordSource, LiveBinding } from './aggregate-across.js'
 import { retrieveAcross } from './retrieve-across.js'
-import type { AggregateSpec } from '@noy-db/hub/kernel'
+import type { AggregateSpec } from '@noy-db/hub/cargo'
 import { reduceToPartial } from './partial-reduce.js'
 import type { PartialState } from './partial-reduce.js'
 import type {

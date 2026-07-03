@@ -9,7 +9,7 @@
  *
  * @module
  */
-import type { Vault } from '@noy-db/hub'
+import type { Vault } from '@noy-db/hub/cargo'
 import type { DecryptedRecord } from '@noy-db/hub/bundle'
 
 /** A pure record-body transform: old body → new body. */
