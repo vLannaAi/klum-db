@@ -1,7 +1,7 @@
 /** Cross-vault federated retrieval (#26) — scatter-gather + RRF fuse. */
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { NoydbStore, EncryptedEnvelope, VaultSnapshot, Vault } from '@noy-db/hub'
-import { ConflictError, createNoydb } from '@noy-db/hub'
+import { ConflictError, createNoydb, withSearch } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
 import { createLobby } from '../src/index.js'
 
@@ -26,7 +26,7 @@ function memoryStore(): NoydbStore {
 }
 
 async function makeDocsGroup() {
-  const db = await createNoydb({ store: memoryStore(), user: 'operator', secret: 'op-pass' })
+  const db = await createNoydb({ store: memoryStore(), user: 'operator', secret: 'op-pass', searchStrategy: withSearch() })
   const lobby = createLobby(db)
   lobby.withVaultTemplate('docs-template', {
     version: 1,
@@ -122,7 +122,7 @@ describe('ShardedCollection.retrieve() — federated (#26)', () => {
 })
 
 async function makeSemanticGroup() {
-  const db = await createNoydb({ store: memoryStore(), user: 'operator', secret: 'op-pass' })
+  const db = await createNoydb({ store: memoryStore(), user: 'operator', secret: 'op-pass', searchStrategy: withSearch() })
   const lobby = createLobby(db)
   // deterministic stub encoder: dims = [has 'alpha', has 'beta', length parity]
   const encode = async (t: string) => new Float32Array([t.includes('alpha') ? 1 : 0, t.includes('beta') ? 1 : 0, t.length % 2])

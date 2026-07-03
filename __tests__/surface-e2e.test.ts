@@ -14,6 +14,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
+import { withCargo } from '@noy-db/hub/cargo'
 import { memory } from '@noy-db/to-memory'
 import { StateManagementVault } from '../src/federation/state-vault.js'
 import {
@@ -67,7 +68,7 @@ describe('Surface E2E — two-party scoped+projected sync (FR-7)', () => {
     expect(agreed.agreedBy).toBe('partyB')
 
     // ── 4. Party A's data vault: clients + secret (NOT in surface)
-    const srcDb = await createNoydb({ store: memory(), user: 'srcPartyA', secret: 'src-secret-xr7' })
+    const srcDb = await createNoydb({ store: memory(), user: 'srcPartyA', secret: 'src-secret-xr7', cargoStrategy: withCargo() })
     const srcVault = await srcDb.openVault('partyA-data')
     const clientsColl = srcVault.collection<Client>('clients')
     await clientsColl.put('c1', { id: 'c1', name: 'Alice', phone: '+1-555-0101' })

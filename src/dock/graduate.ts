@@ -7,8 +7,8 @@
  *
  * @module
  */
-import { createDeedOwner } from '@noy-db/hub'
-import type { Noydb, SealingKeyProvider } from '@noy-db/hub'
+import { createDeedOwner } from '@noy-db/hub/cargo'
+import type { Noydb, SealingKeyProvider } from '@noy-db/hub/cargo'
 import type { DecryptedRecord } from '@noy-db/hub/bundle'
 import { mergeDecryptedRecords } from '../interchange/merge-compartment.js'
 import { stageAndValidate, type RecordTransform } from '../interchange/stage-records.js'

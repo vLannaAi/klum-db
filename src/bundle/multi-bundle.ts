@@ -3,19 +3,19 @@
  * that embeds N standard single-vault `.noydb` bundles plus an
  * unencrypted, owner-curated **manifest**. The v1 single-vault format
  * is untouched; each compartment is a complete v1 bundle, produced by
- * `writeNoydbBundle` and read by `readNoydbBundle`.
+ * `writePod` and read by `readNoydbBundle`.
  *
  * Layout: magic 'NDBM'(4) · version(1) · reserved(1) · manifestLen(4 BE)
  *         · manifest JSON · concat(inner v1 bundles, in manifest order).
  *
  * @packageDocumentation
  */
-import { sha256Hex, generateULID, type Vault } from '@noy-db/hub/kernel'
+import { sha256Hex, generateULID, type Vault } from '@noy-db/hub/cargo'
 import {
-  writeNoydbBundle,
-  readNoydbBundleHeader,
-  type WriteNoydbBundleOptions,
-} from '@noy-db/hub/bundle'
+  writePod,
+  readPodHeader,
+  type WritePodOptions,
+} from '@noy-db/hub/pod'
 import {
   readNoydbBundlePublicEnvelope,
   hasNoydbBundleMagic,
@@ -155,8 +155,8 @@ export interface MultiVaultCompartmentInput {
     /** `true` → surface the inner bundle's public envelope into the manifest. */
     readonly publicEnvelope?: boolean
   }
-  /** Options forwarded to `writeNoydbBundle` for this compartment's inner bundle. */
-  readonly bundleOptions?: WriteNoydbBundleOptions
+  /** Options forwarded to `writePod` for this compartment's inner bundle. */
+  readonly bundleOptions?: WritePodOptions
 }
 
 /** Write N vaults into one `NDBM` multi-compartment bundle. */
@@ -168,8 +168,8 @@ export async function writeMultiVaultBundle(
   const inner: Uint8Array[] = []
   const entries: CompartmentManifest[] = []
   for (const c of compartments) {
-    const innerBytes = await writeNoydbBundle(c.vault, c.bundleOptions ?? {})
-    const header = readNoydbBundleHeader(innerBytes)
+    const innerBytes = await writePod(c.vault, c.bundleOptions ?? {})
+    const header = readPodHeader(innerBytes)
     const entry: {
       -readonly [K in keyof CompartmentManifest]: CompartmentManifest[K]
     } = {
@@ -215,7 +215,7 @@ export async function writeMultiVaultBundle(
 export async function readNoydbBundleManifest(bytes: Uint8Array): Promise<CompartmentManifest[]> {
   if (hasMultiMagic(bytes)) return [...decodeMultiBundle(bytes).manifest.compartments]
   if (hasNoydbBundleMagic(bytes)) {
-    const header = readNoydbBundleHeader(bytes)
+    const header = readPodHeader(bytes)
     const env = readNoydbBundlePublicEnvelope(bytes)
     const entry: { -readonly [K in keyof CompartmentManifest]: CompartmentManifest[K] } = {
       handle: header.handle,
@@ -245,7 +245,7 @@ export function readMultiVaultBundleCompartment(bytes: Uint8Array, selector: str
     throw new Error(`readMultiVaultBundleCompartment: numeric selector must be an integer, got ${selector}.`)
   }
   if (hasNoydbBundleMagic(bytes) && !hasMultiMagic(bytes)) {
-    const header = readNoydbBundleHeader(bytes)
+    const header = readPodHeader(bytes)
     if (selector === 0 || selector === header.handle) return bytes
     throw new Error(`readMultiVaultBundleCompartment: single v1 bundle has only compartment "${header.handle}".`)
   }

@@ -9,8 +9,8 @@
  * into the existing intra-vault `.join()` from vault-group.ts — see
  * ShardedQuery.fanoutRecords. join.ts is deliberately untouched.
  */
-import { readPath } from '@noy-db/hub/kernel'
-import type { JoinStrategy } from '@noy-db/hub/kernel'
+import { readPath } from '@noy-db/hub/cargo'
+import type { JoinStrategy } from '@noy-db/hub/cargo'
 
 /** Public options for `ShardedQuery.crossShardJoin`. */
 export interface CrossShardJoinOptions {

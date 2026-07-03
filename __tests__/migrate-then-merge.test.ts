@@ -15,6 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 import { createNoydb } from '@noy-db/hub'
+import { withCargo } from '@noy-db/hub/cargo'
 import { extractPartition } from '@noy-db/hub/bundle'
 import { memory } from '@noy-db/to-memory'
 import {
@@ -34,7 +35,7 @@ interface SimpleClientWithNote { id: string; name: string; note?: string }
 
 /** Source vault with OLD shape { id, fullName }. */
 async function buildOldBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-old', secret: 'src-old-secret-123' })
+  const sourceDb = await createNoydb({ store: memory(), user: 'src-old', secret: 'src-old-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-old')
   const clients = source.collection<OldClient>('clients')
   await clients.put('c1', { id: 'c1', fullName: 'Jane Doe' })
@@ -68,7 +69,7 @@ async function buildNewSchemaReceiver() {
 
 /** Source vault with { id, name } — the base shape. */
 async function buildSimpleBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-simple', secret: 'src-simple-secret-123' })
+  const sourceDb = await createNoydb({ store: memory(), user: 'src-simple', secret: 'src-simple-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-simple')
   const clients = source.collection<SimpleClient>('clients')
   await clients.put('c1', { id: 'c1', name: 'Alice' })
@@ -100,7 +101,7 @@ async function buildAdditiveReceiver() {
 // ─── Helpers: case (e) — same-version direct merge ───────────────────────────
 
 async function buildSameVersionBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-sv', secret: 'src-sv-secret-123' })
+  const sourceDb = await createNoydb({ store: memory(), user: 'src-sv', secret: 'src-sv-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-sv')
   const clients = source.collection<SimpleClient>('clients')
   await clients.put('c1', { id: 'c1', name: 'Alice' })

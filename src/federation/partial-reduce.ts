@@ -6,11 +6,11 @@
  * without materializing the union. Used by the scalar `.aggregate().run()` path
  * when every reducer exposes `merge` (else the caller falls back to central).
  */
-import type { AggregateResult, AggregateSpec } from '@noy-db/hub/kernel'
+import type { AggregateResult, AggregateSpec } from '@noy-db/hub/cargo'
 
 /**
  * Structural view of the kernel `Reducer` protocol. `Reducer` itself is not
- * exported on the `@noy-db/hub/kernel` boundary, so we model the shape locally
+ * exported on the `@noy-db/hub/cargo` boundary, so we model the shape locally
  * (an `AggregateSpec` value carries exactly these methods).
  */
 interface ReducerLike {

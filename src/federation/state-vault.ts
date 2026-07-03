@@ -4,13 +4,13 @@
  * schema-manifest + append-only deployment-events). See
  * docs/superpowers/specs/2026-06-08-statemanagement-vault-design.md.
  */
-import type { Noydb } from '@noy-db/hub/kernel'
-import type { Collection } from '@noy-db/hub/kernel'
-import type { Query } from '@noy-db/hub/kernel'
+import type { Noydb } from '@noy-db/hub/cargo'
+import type { Collection } from '@noy-db/hub/cargo'
+import type { Query } from '@noy-db/hub/cargo'
 import type { VaultRegistryRow, SchemaManifestRow, DeploymentEvent, MigrationStatusRow, SurfaceRow, VaultTemplate } from './types.js'
 import { captureBlueprint, fingerprintBlueprint } from './schema-manifest.js'
 import { STATE_VAULT_NAME } from './constants.js'
-import { generateULID } from '@noy-db/hub/kernel'
+import { generateULID } from '@noy-db/hub/cargo'
 
 // Re-export so federation/index.ts can surface STATE_VAULT_NAME without reaching past state-vault.
 export { STATE_VAULT_NAME } from './constants.js'

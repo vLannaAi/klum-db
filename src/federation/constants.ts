@@ -1,1 +1,1 @@
-export { STATE_VAULT_NAME } from '@noy-db/hub'
+export { STATE_VAULT_NAME } from '@noy-db/hub/cargo'

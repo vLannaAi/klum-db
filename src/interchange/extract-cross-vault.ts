@@ -3,15 +3,15 @@
  * Composes hub's intra-vault primitives + FR-1's encodeMultiBundle.
  * @packageDocumentation
  */
-import type { Vault } from '@noy-db/hub'
+import type { Vault } from '@noy-db/hub/cargo'
 import {
   walkClosure,
   extractPartition,
-  readNoydbBundleHeader,
   describeExtraction,
   type ExtractionPreview,
 } from '@noy-db/hub/bundle'
-import { sha256Hex, generateULID } from '@noy-db/hub/kernel'
+import { readPodHeader } from '@noy-db/hub/pod'
+import { sha256Hex, generateULID } from '@noy-db/hub/cargo'
 import {
   encodeMultiBundle,
   NOYDB_MULTI_BUNDLE_VERSION,
@@ -235,7 +235,7 @@ export async function extractCrossVaultPartition(
       ...(opts.compression !== undefined ? { compression: opts.compression } : {}),
     })
 
-    const header = readNoydbBundleHeader(bundleBytes)
+    const header = readPodHeader(bundleBytes)
     const meta = opts.compartmentMeta?.[vaultName]
 
     const entry: { -readonly [K in keyof CompartmentManifest]: CompartmentManifest[K] } = {

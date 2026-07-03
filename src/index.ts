@@ -2,9 +2,8 @@
  * @klum-db/lobby — the Lobby orchestrates a group of sovereign noy-db vaults.
  * @packageDocumentation
  */
-import type { Noydb } from '@noy-db/hub'
-import { ValidationError, ReservedVaultNameError, VaultTemplateNotFoundError } from '@noy-db/hub/kernel'
-import { STATE_VAULT_NAME } from '@noy-db/hub'
+import type { Noydb } from '@noy-db/hub/cargo'
+import { ValidationError, ReservedVaultNameError, VaultTemplateNotFoundError, STATE_VAULT_NAME } from '@noy-db/hub/cargo'
 import type { VaultGroup } from './federation/vault-group.js'
 import type { StateManagementVault } from './federation/state-vault.js'
 import type { VaultTemplate, VaultGroupOptions } from './federation/types.js'
@@ -220,7 +219,7 @@ export { meterGroup } from './federation/meter-group.js'
 export type { GroupMeterReport, GroupShardMetrics } from './federation/meter-group.js'
 
 // Federation error classes as runtime values — so consumers catch them from
-// @klum-db/lobby directly, not via @noy-db/hub's internal /kernel surface.
+// @klum-db/lobby directly, not via @noy-db/hub's /cargo orchestration seam.
 export {
   CrossShardJoinError,
   UnknownShardError,
@@ -228,7 +227,7 @@ export {
   VaultTemplateNotFoundError,
   ReservedVaultNameError,
   DataResidencyError,
-} from '@noy-db/hub/kernel'
+} from '@noy-db/hub/cargo'
 
 // ─── Multivault bundle (NDBM) — relocated from @noy-db/hub ────────────────────
 export {
@@ -302,8 +301,8 @@ export type {
 // Pure re-exports — custody is a vault-level concern in @noy-db/hub; the Lobby
 // surfaces the types/functions so fleet-level orchestration can reach them
 // without importing hub internals directly (no lobby logic in this slice).
-export { CustodyApi, liberateVault, createDeedOwner, loadDeedMarker, isDeedVault } from '@noy-db/hub'
-export type { DeedMarker, LiberateOptions, LiberateResult, GrantCustodianOptions } from '@noy-db/hub'
+export { CustodyApi, liberateVault, createDeedOwner, loadDeedMarker, isDeedVault } from '@noy-db/hub/cargo'
+export type { DeedMarker, LiberateOptions, LiberateResult, GrantCustodianOptions } from '@noy-db/hub/cargo'
 
 // ─── FR-9: Multi-vault FK-driven Excel export ─────────────────────────────────
 // ExportMultiVaultXlsxOptions is declared (and exported) above alongside Lobby.

@@ -3,8 +3,8 @@
  * Pure helpers: `now` is always passed in; no Date.now() calls inside.
  * @packageDocumentation
  */
-import { generateULID } from '@noy-db/hub/kernel'
-import type { Vault } from '@noy-db/hub'
+import { generateULID } from '@noy-db/hub/cargo'
+import type { Vault } from '@noy-db/hub/cargo'
 import { extractPartition } from '@noy-db/hub/bundle'
 import { mergeCompartment, type MergeReport } from './merge-compartment.js'
 import type { StateManagementVault } from '../federation/state-vault.js'

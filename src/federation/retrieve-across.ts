@@ -4,8 +4,8 @@
  * `retrieve()`, then RRF-fuse the per-vault ranked lists by rank only (no
  * cross-vault statistics cross the boundary). Mirrors aggregate-across.ts.
  */
-import { fuseRetrieval } from '@noy-db/hub/kernel'
-import type { RetrieveHit, Query } from '@noy-db/hub/kernel'
+import { fuseRetrieval } from '@noy-db/hub/cargo'
+import type { RetrieveHit, Query } from '@noy-db/hub/cargo'
 import type { VaultGroup } from './vault-group.js'
 import { classifyShardSkip } from './classify-skip.js'
 import type { FederatedRetrieveOptions, FederatedRetrieveHit, FederatedRetrieveResult, SkippedVault } from './types.js'

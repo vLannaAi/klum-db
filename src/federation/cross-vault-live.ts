@@ -5,7 +5,7 @@
  * change. Mirrors the LiveQuery/LiveAggregation contracts via facades.
  * Spec: docs/superpowers/specs/2026-06-07-cross-vault-live-and-aggregate-design.md.
  */
-import type { ChangeEvent } from '@noy-db/hub/kernel'
+import type { ChangeEvent } from '@noy-db/hub/cargo'
 
 export interface CrossVaultLiveOptions<S> {
   readonly subscribeToChanges: (handler: (e: ChangeEvent) => void) => () => void
