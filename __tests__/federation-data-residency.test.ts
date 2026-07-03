@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import type { NoydbStore, EncryptedEnvelope, VaultSnapshot, StoreCapabilities } from '@noy-db/hub'
 import { ConflictError, DataResidencyError } from '@noy-db/hub'
-import { routeStore } from '@noy-db/hub/store'
+import { routeStore } from '@noy-db/hub'
 import { createNoydb } from '@noy-db/hub'
 import type { Vault } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
