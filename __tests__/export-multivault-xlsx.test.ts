@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
+import { withTeam } from '@noy-db/hub/team'
 import { memory } from '@noy-db/to-memory'
 import { createLobby } from '../src/index.js'
 
@@ -68,7 +69,7 @@ async function buildFixture() {
   await db.close()
 
   // Grant xlsx export on both vaults
-  const db2 = await createNoydb({ store: adapter, user: 'owner-01', secret: 'lobby-secret' })
+  const db2 = await createNoydb({ store: adapter, user: 'owner-01', secret: 'lobby-secret', teamStrategy: withTeam() })
   await db2.grant('primary', {
     userId: 'owner-01', displayName: 'Owner', role: 'owner',
     passphrase: 'lobby-secret',

@@ -167,26 +167,29 @@ The one-way law and the kernel seam are covered up top — here are the specific
 - **Federation** lives in the Lobby, not in hub — open fleets with `lobby.openVaultGroup` (`@noy-db/hub` no longer ships the `openVaultGroup` / `openStateManagementVault` / `withVaultTemplate` fleet methods).
 - **Enforced, not conventional:** an `@noy-db` package importing `@klum-db` fails noy-db's build-time architecture check.
 
-## Consumer requirements (hub >= 0.3.0-pre.1)
+## Consumer requirements (hub >= 0.4.0-pre.0)
 
-`@noy-db/hub` gates `extractPartition` (the primitive under `extractCrossVaultPartition`, `mergeCompartment`, `migrateThenMerge`, `exportSurface`/`applySurface`) and search/retrieval behind opt-in strategies. The Lobby never constructs your `Noydb`/`Vault` instances — you do — so **you** must opt in on any vault passed into these APIs:
+`@noy-db/hub` gates `extractPartition` (the primitive under `extractCrossVaultPartition`, `mergeCompartment`, `migrateThenMerge`, `exportSurface`/`applySurface`), search/retrieval, and multi-user grants behind opt-in strategies. The Lobby never constructs your `Noydb`/`Vault` instances — you do — so **you** must opt in on any vault passed into these APIs:
 
 - **Interchange** (`extractCrossVaultPartition`, `mergeCompartment`, `migrateThenMerge`, `exportSurface`, `applySurface`): every source vault involved must be created with `cargoStrategy: withCargo()` from `@noy-db/hub/cargo`, or these calls throw `CargoNotEnabledError`.
 - **Federated retrieve** (`ShardedCollection.retrieve()` across a `VaultGroup`): additionally requires `searchStrategy: withSearch()` from `@noy-db/hub` on every vault in the group, or lexical retrieve silently returns no hits and semantic/hybrid retrieve throws `SearchNotEnabledError`.
+- **Multi-user grants** (sharing shards/registry vaults across operators and advisors): the *granting* session must be created with `teamStrategy: withTeam()` from `@noy-db/hub/team`, or `grant`/`revoke`/`rotate` throw `TeamNotEnabledError`. Grantees opening an already-granted vault need no strategy.
 
 ```ts
 import { createNoydb, withSearch } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
+import { withTeam } from '@noy-db/hub/team'
 
 const db = await createNoydb({
   store, user, secret,
   cargoStrategy: withCargo(),     // required for interchange (extractPartition-backed APIs)
   searchStrategy: withSearch(),   // required for federated retrieve()
+  teamStrategy: withTeam(),       // required to grant/revoke/rotate multi-user access
 })
 ```
 
 ## Status
 
-Preview. `@klum-db/lobby` is its own repository and the sole publisher of `@klum-db/*` to npm. It depends on the **published** `@noy-db/*` packages through the stable `@noy-db/hub/kernel` boundary and versions **independently** (`0.2.0-pre.N`, decoupled from noy-db). Pilot-1 (FR-1…FR-9), the dock tier, and `Lobby.graduate()` are complete.
+Preview. `@klum-db/lobby` is its own repository and the sole publisher of `@klum-db/*` to npm. It depends on the **published** `@noy-db/*` packages through the stable `@noy-db/hub/cargo` + `/pod` boundaries and versions **independently** (`0.4.0-pre.N`, decoupled from noy-db). Pilot-1 (FR-1…FR-9), the dock tier, and `Lobby.graduate()` are complete.
 
 See [`docs/architecture.md`](docs/architecture.md) for the detailed noy-db ↔ klum-db boundary, [`docs/roadmap.md`](docs/roadmap.md) for what's next, and [`PROVENANCE.md`](./PROVENANCE.md) for origin and build history.

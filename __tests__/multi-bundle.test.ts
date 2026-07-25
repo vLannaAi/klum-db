@@ -233,7 +233,7 @@ describe('multi-bundle > readers', () => {
     const manifest = await readNoydbBundleManifest(bytes)
     for (const c of manifest) {
       const innerBytes = readMultiVaultBundleCompartment(bytes, c.handle)
-      const { sha256Hex } = await import('@noy-db/hub/kernel')
+      const { sha256Hex } = await import('@noy-db/hub/cargo')
       const verifySha = await sha256Hex(innerBytes)
       expect(verifySha).toBe(c.innerSha256)
       const read = await readNoydbBundle(innerBytes)   // loads independently

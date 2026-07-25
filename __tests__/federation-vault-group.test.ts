@@ -7,6 +7,7 @@ import type { NoydbStore, EncryptedEnvelope, VaultSnapshot } from '@noy-db/hub'
 import { ConflictError, ShardProvisioningError, VaultTemplateNotFoundError, UnknownShardError, ValidationError, NoAccessError, InvalidKeyError, KeyringCorruptError } from '@noy-db/hub'
 import { classifyShardSkip } from '../src/federation/classify-skip.js'
 import { createNoydb } from '@noy-db/hub'
+import { withTeam } from '@noy-db/hub/team'
 import type { Noydb } from '@noy-db/hub'
 import type { Vault } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
@@ -316,7 +317,7 @@ describe('classifyShardSkip', () => {
 describe('VaultGroup — key-custody-neutral fan-out', () => {
   it('non-granted shard → no-grant skip on fan-out; clean throw on drill-down/put; zero self-provision', async () => {
     const adapter = memory()
-    const op = await createNoydb({ store: adapter, user: 'operator', secret: 'op-pass' })
+    const op = await createNoydb({ store: adapter, user: 'operator', secret: 'op-pass', teamStrategy: withTeam() })
     const oplobby = createLobby(op)
     oplobby.withVaultTemplate('t', { version: 1, configure: (v: Vault) => { v.collection<Invoice>('invoices') } })
     const opState = await op.openVault('state')
