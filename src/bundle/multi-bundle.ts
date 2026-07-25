@@ -14,13 +14,11 @@ import { sha256Hex, generateULID, type Vault } from '@noy-db/hub/cargo'
 import {
   writePod,
   readPodHeader,
+  readPodCover,
+  NOYDB_BUNDLE_MAGIC,
+  type Cover,
   type WritePodOptions,
 } from '@noy-db/hub/pod'
-import {
-  readNoydbBundlePublicEnvelope,
-  hasNoydbBundleMagic,
-  type PublicEnvelope,
-} from '@noy-db/hub'
 import { readUint32BE, writeUint32BE } from './uint32.js'
 
 /** Magic bytes 'NDBM' — NOYDB Multi-compartment bundle. */
@@ -42,8 +40,8 @@ export interface CompartmentManifest {
   readonly name?: string
   /** Collection names + record counts. Opt-in disclosure. */
   readonly collections?: readonly { readonly name: string; readonly count: number }[]
-  /** Inner bundle's owner-curated public envelope, surfaced. Opt-in. */
-  readonly publicEnvelope?: PublicEnvelope
+  /** Inner bundle's owner-curated cover (né public envelope — manifest key is this repo's wire). Opt-in. */
+  readonly publicEnvelope?: Cover
   /** Byte length of the inner v1 bundle (drives framing). */
   readonly innerBytes: number
   /** SHA-256 (lowercase hex) of the inner v1 bundle bytes — pre-decrypt integrity. */
@@ -85,6 +83,14 @@ export function encodeMultiBundle(
   let off = NOYDB_MULTI_BUNDLE_PREFIX_BYTES + manifestBytes.length
   for (const b of inner) { out.set(b, off); off += b.length }
   return out
+}
+
+// Local stand-in for hub's root-barrel `hasNoydbBundleMagic` — `/pod` exports
+// the magic constant but not the predicate (promotion flagged to noy-db).
+function hasPodMagic(bytes: Uint8Array): boolean {
+  if (bytes.length < NOYDB_BUNDLE_MAGIC.length) return false
+  for (let i = 0; i < NOYDB_BUNDLE_MAGIC.length; i++) if (bytes[i] !== NOYDB_BUNDLE_MAGIC[i]) return false
+  return true
 }
 
 function hasMultiMagic(bytes: Uint8Array): boolean {
@@ -189,7 +195,7 @@ export async function writeMultiVaultBundle(
       )
     }
     if (c.disclose?.publicEnvelope === true) {
-      const env = readNoydbBundlePublicEnvelope(innerBytes)
+      const env = readPodCover(innerBytes)
       if (env !== undefined) entry.publicEnvelope = env
     }
     // FR-8: stamp schema fence version so the bundle self-describes its version.
@@ -214,9 +220,9 @@ export async function writeMultiVaultBundle(
  */
 export async function readNoydbBundleManifest(bytes: Uint8Array): Promise<CompartmentManifest[]> {
   if (hasMultiMagic(bytes)) return [...decodeMultiBundle(bytes).manifest.compartments]
-  if (hasNoydbBundleMagic(bytes)) {
+  if (hasPodMagic(bytes)) {
     const header = readPodHeader(bytes)
-    const env = readNoydbBundlePublicEnvelope(bytes)
+    const env = readPodCover(bytes)
     const entry: { -readonly [K in keyof CompartmentManifest]: CompartmentManifest[K] } = {
       handle: header.handle,
       innerBytes: bytes.length,
@@ -244,7 +250,7 @@ export function readMultiVaultBundleCompartment(bytes: Uint8Array, selector: str
   if (typeof selector === 'number' && !Number.isInteger(selector)) {
     throw new Error(`readMultiVaultBundleCompartment: numeric selector must be an integer, got ${selector}.`)
   }
-  if (hasNoydbBundleMagic(bytes) && !hasMultiMagic(bytes)) {
+  if (hasPodMagic(bytes) && !hasMultiMagic(bytes)) {
     const header = readPodHeader(bytes)
     if (selector === 0 || selector === header.handle) return bytes
     throw new Error(`readMultiVaultBundleCompartment: single v1 bundle has only compartment "${header.handle}".`)
