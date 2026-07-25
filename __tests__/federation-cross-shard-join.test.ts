@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { NoydbError, ConflictError } from '@noy-db/hub'
-import { CrossShardJoinError } from '@noy-db/hub/kernel'
+import { CrossShardJoinError } from '@noy-db/hub/cargo'
 import { sum, count } from '@noy-db/hub/aggregate'
 import {
   applyBroadcastLegs,

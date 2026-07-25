@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest'
 import type { NoydbStore, EncryptedEnvelope, VaultSnapshot } from '@noy-db/hub'
 import { ConflictError, NoAccessError } from '@noy-db/hub'
 import { createNoydb } from '@noy-db/hub'
+import { withTeam } from '@noy-db/hub/team'
 import type { Vault } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
 import { sum, count, avg, min, max } from '@noy-db/hub/aggregate'
@@ -192,7 +193,7 @@ describe('ShardedQuery.live() — no-grant scoped access', () => {
     // Operator creates two shards (firm-clients--acme and firm-clients--beta),
     // then grants advisor access to only one shard + the state registry vault.
     const adapter = memory()
-    const op = await createNoydb({ store: adapter, user: 'operator', secret: 'op-pass' })
+    const op = await createNoydb({ store: adapter, user: 'operator', secret: 'op-pass', teamStrategy: withTeam() })
     const oplobby = createLobby(op)
     oplobby.withVaultTemplate('client-template', { version: 1, configure: (v: Vault) => { v.collection<Invoice>('invoices') } })
     const opState = await op.openVault('state')

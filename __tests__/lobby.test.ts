@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { memory } from '@noy-db/to-memory'
 import { Lobby, createLobby } from '../src/index.js'
-import { generateULID } from '@noy-db/hub/kernel'
+import { generateULID } from '@noy-db/hub/cargo'
 import * as lobbyApi from '../src/index.js'
 
 describe('Lobby', () => {
@@ -19,7 +19,7 @@ describe('Lobby', () => {
 })
 
 describe('kernel boundary', () => {
-  it('Lobby can consume the @noy-db/hub/kernel surface', () => {
+  it('Lobby can consume the @noy-db/hub/cargo surface', () => {
     const id = generateULID()
     expect(id).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/)
   })
