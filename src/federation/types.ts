@@ -48,6 +48,11 @@ export interface VaultRegistryRow {
   readonly createdAt: number
   /** Which VaultGroup this shard belongs to (registry is shared across groups). */
   readonly group: string
+  /**
+   * The shard's portal vault handle — the ULID that `@noy-db/hub/share-link`
+   * links address (#43). Absent until a portal is provisioned for the shard.
+   */
+  readonly handle?: string
 }
 
 /** How a VaultGroup maps records to shards. */
