@@ -20,7 +20,7 @@ import { ValidationError } from '@noy-db/hub/cargo'
 import type { Collection, Vault } from '@noy-db/hub'
 import { InsightAutoPush } from './insight-auto-push.js'
 import type { VaultGroup } from './vault-group.js'
-import type { CrossVaultDerivationContext, InsightAutoPushConfig, SkippedVault } from './types.js'
+import type { CrossVaultDerivationContext, InsightAutoPushConfig, SkippedVault, VaultRegistryRow } from './types.js'
 
 /** Explicit ZK surface: the only fields a model may emit. */
 export interface ReadModelPosture {
@@ -75,6 +75,14 @@ export interface OpenReadModelOptions {
   readonly freshness?: {
     readonly autoPush?: boolean | InsightAutoPushConfig
   }
+  /**
+   * Audience subset (spec § 5): only registry rows passing this
+   * predicate feed the read-model (e.g. an advisor's clients). Rows of
+   * a shard that falls OUT of scope retract on the next refresh — a
+   * narrowed audience never keeps out-of-scope data. Must be pure.
+   * Absent = the whole group.
+   */
+  readonly shards?: (row: VaultRegistryRow) => boolean
 }
 
 /** The result of {@link ReadModel.refresh}. */
@@ -153,6 +161,7 @@ export class ReadModel<T> {
     private readonly vaultName: string,
     private readonly vault: Vault,
     private readonly models: readonly ReadModelSpec[],
+    private readonly shards?: (row: VaultRegistryRow) => boolean,
   ) {}
 
   /**
@@ -210,11 +219,15 @@ export class ReadModel<T> {
    * departure; those shards land in `skippedVaults` instead.
    */
   async refresh(options: { minVersion?: number; concurrency?: number; only?: readonly string[]; failFast?: boolean } = {}): Promise<ReadModelRefreshResult> {
-    const { eligible, skipped } = await this.group.resolveEligible({
+    const resolved = await this.group.resolveEligible({
       ...(options.minVersion !== undefined ? { minVersion: options.minVersion } : {}),
       ...(options.only !== undefined ? { only: options.only } : {}),
       ...(options.failFast !== undefined ? { failFast: options.failFast } : {}),
     })
+    // Audience subset (spec § 5): out-of-scope shards neither feed nor
+    // count as skipped — they are simply not this read-model's audience.
+    const eligible = this.shards ? resolved.eligible.filter((r) => this.shards!(r)) : resolved.eligible
+    const skipped = resolved.skipped
     let written = 0
     let retracted = 0
     for (const model of this.models) {
@@ -279,9 +292,10 @@ export class ReadModel<T> {
 
   /**
    * Delete stale rows: id not in `expected` AND the row's shard is
-   * either healthy this refresh (source record deleted) or no longer
-   * in the group registry (shard departed). Unreachable-but-registered
-   * shards are preserved.
+   * healthy this refresh (source record deleted), no longer in the
+   * group registry (shard departed), or outside the audience predicate
+   * (scope narrowed — out-of-scope data never lingers, spec § 5).
+   * Unreachable-but-registered in-scope shards are preserved.
    */
   private async reconcile(
     out: Collection<Record<string, unknown>>,
@@ -290,10 +304,10 @@ export class ReadModel<T> {
     healthyShards: Set<string>,
   ): Promise<number> {
     await this.group.registry.list()
-    const registryPks = new Set(
+    const registryRows = new Map(
       (this.group.registry.query().toArray())
         .filter((r) => r.group === this.group.name)
-        .map((r) => r.partitionKey),
+        .map((r) => [r.partitionKey, r] as const),
     )
     await out.list()
     const rows = out.query().toArray()
@@ -303,7 +317,9 @@ export class ReadModel<T> {
       if (shard === undefined) continue
       const id = model.kind === 'rollup' ? shard : `${shard}:${String(row['_sourceId'])}`
       if (expected.has(id)) continue
-      if (healthyShards.has(shard) || !registryPks.has(shard)) {
+      const registryRow = registryRows.get(shard)
+      const outOfScope = registryRow !== undefined && this.shards !== undefined && !this.shards(registryRow)
+      if (healthyShards.has(shard) || registryRow === undefined || outOfScope) {
         await out.delete(id)
         retracted++
       }
@@ -336,7 +352,7 @@ export async function openReadModel<T>(
     }
   }
   const vault = await group.db.openVault(target)
-  const rm = new ReadModel(group, target, vault, opts.models)
+  const rm = new ReadModel(group, target, vault, opts.models, opts.shards)
   const autoPush = opts.freshness?.autoPush
   if (autoPush) rm._armAutoPush(autoPush === true ? {} : autoPush)
   return rm
