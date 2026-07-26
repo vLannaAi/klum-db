@@ -38,8 +38,26 @@ export interface RollupModelSpec<R = Record<string, unknown>, S extends Record<s
   readonly posture: ReadModelPosture
 }
 
-/** S1: rollup only. S2 (#56) adds the mirror shape to this union. `never` makes caller-typed `derive` params assignable (contravariance). */
-export type ReadModelSpec = RollupModelSpec<never>
+/**
+ * Mirror model (S2, #56): per-record replication of each shard's
+ * `source` collection (plain or #810-MV-output — the engine is
+ * agnostic) into one group-wide collection. Row id =
+ * `${shard}:${idOf(row)}` — identity is in-band, the same idiom as
+ * `sharding.keyOf`.
+ */
+export interface MirrorModelSpec<R = Record<string, unknown>> {
+  /** Output collection name in the read-model vault. */
+  readonly name: string
+  readonly kind: 'mirror'
+  /** Collection read from each shard (plain or MV-output — the engine is agnostic). */
+  readonly source: string
+  /** Extract the source record's id (must be pure; parallel to `sharding.keyOf`). */
+  readonly idOf: (row: R) => string
+  readonly posture: ReadModelPosture
+}
+
+/** `never` makes caller-typed `derive`/`idOf` params assignable (contravariance). */
+export type ReadModelSpec = RollupModelSpec<never> | MirrorModelSpec<never>
 
 /** Options for `Lobby.openReadModel`. */
 export interface OpenReadModelOptions {
@@ -51,6 +69,8 @@ export interface OpenReadModelOptions {
 /** The result of {@link ReadModel.refresh}. */
 export interface ReadModelRefreshResult {
   readonly written: number
+  /** Rows removed by reconciliation: deleted sources + departed shards. */
+  readonly retracted: number
   readonly skippedVaults: SkippedVault[]
 }
 
@@ -70,7 +90,14 @@ export class PostureViolationError extends Error {
 }
 
 /** Engine-owned provenance fields stamped on every read-model row. */
-const PROVENANCE_FIELDS = new Set(['_shard', '_sourceVersion'])
+const PROVENANCE_FIELDS = new Set(['_shard', '_sourceId', '_sourceVersion'])
+
+/** @internal — one source record read from a shard (mirror carries id + version). */
+interface SourceEntry {
+  readonly record: Record<string, unknown>
+  readonly id: string
+  readonly version: number
+}
 
 function checkPosture(model: ReadModelSpec, row: Record<string, unknown>, shard: string): void {
   const declared = new Set(model.posture.surface)
@@ -99,10 +126,15 @@ export class ReadModel<T> {
 
   /**
    * Explicit refresh: for each model, read every eligible shard's
-   * `source`, reduce, posture-check, and write one summary row per
-   * shard — deterministic id = partitionKey, stamped with `_shard` +
-   * `_sourceVersion` (the shard's schema version at derive time).
-   * Unreachable shards land in `skippedVaults` (never silently dropped).
+   * `source`, posture-check, and write — rollup: one summary row per
+   * shard (id = partitionKey); mirror: one row per source record
+   * (id = `${shard}:${idOf(row)}`). Every row is stamped with `_shard`
+   * + `_sourceVersion` (mirror rows additionally `_sourceId`).
+   *
+   * Reconciliation (spec § 4): rows whose source record is gone, and
+   * all rows of a shard that LEFT the group, are deleted (`retracted`).
+   * Rows of a merely-unreachable shard are PRESERVED — offline is not
+   * departure; those shards land in `skippedVaults` instead.
    */
   async refresh(options: { minVersion?: number; concurrency?: number; only?: readonly string[]; failFast?: boolean } = {}): Promise<ReadModelRefreshResult> {
     const { eligible, skipped } = await this.group.resolveEligible({
@@ -111,16 +143,26 @@ export class ReadModel<T> {
       ...(options.failFast !== undefined ? { failFast: options.failFast } : {}),
     })
     let written = 0
+    let retracted = 0
     for (const model of this.models) {
-      const results = await this.group.db.queryAcross<Record<string, unknown>[]>(
+      const results = await this.group.db.queryAcross<readonly SourceEntry[]>(
         eligible.map((r) => r.vaultId),
         async (vault) => {
           this.group.template.configure(vault)
-          return vault.collection<Record<string, unknown>>(model.source).list()
+          const coll = vault.collection<Record<string, unknown>>(model.source)
+          const records = await coll.list()
+          if (model.kind === 'rollup') return records.map((record) => ({ record, id: '', version: 0 }))
+          return Promise.all(records.map(async (record) => {
+            const id = (model.idOf as (r: Record<string, unknown>) => string)(record)
+            const meta = await coll.getMetadata(id)
+            return { record, id, version: meta?.version ?? 0 }
+          }))
         },
         { create: false, ...(options.concurrency !== undefined ? { concurrency: options.concurrency } : {}) },
       )
       const out = this.vault.collection<Record<string, unknown>>(model.name)
+      const expected = new Set<string>()
+      const healthyShards = new Set<string>()
       for (let i = 0; i < eligible.length; i++) {
         const row = eligible[i]!
         const res = results[i]
@@ -131,22 +173,74 @@ export class ReadModel<T> {
           }
           continue
         }
-        const ctx: CrossVaultDerivationContext = {
-          vaultId: row.vaultId,
-          partitionKey: row.partitionKey,
-          schemaVersion: row.schemaVersion,
+        healthyShards.add(row.partitionKey)
+        if (model.kind === 'rollup') {
+          const ctx: CrossVaultDerivationContext = {
+            vaultId: row.vaultId,
+            partitionKey: row.partitionKey,
+            schemaVersion: row.schemaVersion,
+          }
+          const summary = (model.derive as (r: Record<string, unknown>[], c: CrossVaultDerivationContext) => Record<string, unknown>)(res.result.map((e) => e.record), ctx)
+          checkPosture(model, summary, row.partitionKey)
+          await out.put(row.partitionKey, {
+            ...summary,
+            _shard: row.partitionKey,
+            _sourceVersion: row.schemaVersion,
+          })
+          expected.add(row.partitionKey)
+          written++
+        } else {
+          for (const entry of res.result) {
+            checkPosture(model, entry.record, row.partitionKey)
+            const id = `${row.partitionKey}:${entry.id}`
+            await out.put(id, {
+              ...entry.record,
+              _shard: row.partitionKey,
+              _sourceId: entry.id,
+              _sourceVersion: entry.version,
+            })
+            expected.add(id)
+            written++
+          }
         }
-        const summary = (model.derive as (r: Record<string, unknown>[], c: CrossVaultDerivationContext) => Record<string, unknown>)(res.result, ctx)
-        checkPosture(model, summary, row.partitionKey)
-        await out.put(row.partitionKey, {
-          ...summary,
-          _shard: row.partitionKey,
-          _sourceVersion: row.schemaVersion,
-        })
-        written++
+      }
+      retracted += await this.reconcile(out, model, expected, healthyShards)
+    }
+    return { written, retracted, skippedVaults: skipped }
+  }
+
+  /**
+   * Delete stale rows: id not in `expected` AND the row's shard is
+   * either healthy this refresh (source record deleted) or no longer
+   * in the group registry (shard departed). Unreachable-but-registered
+   * shards are preserved.
+   */
+  private async reconcile(
+    out: Collection<Record<string, unknown>>,
+    model: ReadModelSpec,
+    expected: Set<string>,
+    healthyShards: Set<string>,
+  ): Promise<number> {
+    await this.group.registry.list()
+    const registryPks = new Set(
+      (this.group.registry.query().toArray())
+        .filter((r) => r.group === this.group.name)
+        .map((r) => r.partitionKey),
+    )
+    await out.list()
+    const rows = out.query().toArray()
+    let retracted = 0
+    for (const row of rows) {
+      const shard = row['_shard'] as string | undefined
+      if (shard === undefined) continue
+      const id = model.kind === 'rollup' ? shard : `${shard}:${String(row['_sourceId'])}`
+      if (expected.has(id)) continue
+      if (healthyShards.has(shard) || !registryPks.has(shard)) {
+        await out.delete(id)
+        retracted++
       }
     }
-    return { written, skippedVaults: skipped }
+    return retracted
   }
 }
 
