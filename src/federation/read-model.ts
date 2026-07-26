@@ -18,8 +18,9 @@
  */
 import { ValidationError } from '@noy-db/hub/cargo'
 import type { Collection, Vault } from '@noy-db/hub'
+import { InsightAutoPush } from './insight-auto-push.js'
 import type { VaultGroup } from './vault-group.js'
-import type { CrossVaultDerivationContext, SkippedVault } from './types.js'
+import type { CrossVaultDerivationContext, InsightAutoPushConfig, SkippedVault } from './types.js'
 
 /** Explicit ZK surface: the only fields a model may emit. */
 export interface ReadModelPosture {
@@ -64,6 +65,16 @@ export interface OpenReadModelOptions {
   /** The read-model vault. Must not be the group or one of its shards. */
   readonly vault: string
   readonly models: readonly ReadModelSpec[]
+  /**
+   * Freshness (spec § 3). `autoPush` wires the #13 controller: a write
+   * on any model's `source` re-derives THAT shard's contribution only
+   * (never a full fan-out), coalesced per microtask — or on a
+   * reset-debounce timer via `{ debounceMs }`; `{ minVersion }` gates
+   * behind-version shards. Default off: explicit `refresh()` only.
+   */
+  readonly freshness?: {
+    readonly autoPush?: boolean | InsightAutoPushConfig
+  }
 }
 
 /** The result of {@link ReadModel.refresh}. */
@@ -99,6 +110,28 @@ interface SourceEntry {
   readonly version: number
 }
 
+/**
+ * @internal — the shared derive core (spec § 6): build the per-shard
+ * context and run the reducer. Used by both the read-model rollup arm
+ * and the legacy `withCrossVaultDerivation` path (`refreshInsights` /
+ * auto-push recompute), so the ctx contract can never drift between
+ * them. The WRITE halves stay separate on purpose: legacy rows are
+ * byte-exact (no provenance stamps, no posture, no reconcile) — a
+ * frozen shape its consumers rely on.
+ */
+export function deriveShardSummary(
+  spec: { readonly derive: (records: never, ctx: CrossVaultDerivationContext) => Record<string, unknown> },
+  records: Record<string, unknown>[],
+  row: { readonly vaultId: string; readonly partitionKey: string; readonly schemaVersion: number },
+): Record<string, unknown> {
+  const ctx: CrossVaultDerivationContext = {
+    vaultId: row.vaultId,
+    partitionKey: row.partitionKey,
+    schemaVersion: row.schemaVersion,
+  }
+  return (spec.derive as (r: Record<string, unknown>[], c: CrossVaultDerivationContext) => Record<string, unknown>)(records, ctx)
+}
+
 function checkPosture(model: ReadModelSpec, row: Record<string, unknown>, shard: string): void {
   const declared = new Set(model.posture.surface)
   const undeclared = Object.keys(row).filter((k) => !declared.has(k) && !PROVENANCE_FIELDS.has(k))
@@ -111,6 +144,9 @@ function checkPosture(model: ReadModelSpec, row: Record<string, unknown>, shard:
  * vault — one query, never N shard opens.
  */
 export class ReadModel<T> {
+  /** @internal — auto-push controller; armed by {@link _armAutoPush}. */
+  private autoPush: InsightAutoPush | undefined
+
   /** @internal */
   constructor(
     private readonly group: VaultGroup<T>,
@@ -118,6 +154,43 @@ export class ReadModel<T> {
     private readonly vault: Vault,
     private readonly models: readonly ReadModelSpec[],
   ) {}
+
+  /**
+   * @internal — wire the #13 controller (spec § 3). Trigger is the
+   * Noydb-level change stream filtered to this group's shard vaults
+   * (`<group>--<pk>`); the read-model vault can never match that prefix
+   * (guarded at open), so its own writes can't loop back. Recompute is
+   * a per-shard `refresh({ only })` — rollup re-reduces and mirror
+   * reconciles just that shard; other shards' rows are untouched
+   * (registered shards are preserved by the reconcile asymmetry).
+   */
+  _armAutoPush(cfg: InsightAutoPushConfig): void {
+    const controller = new InsightAutoPush(
+      async (partitionKey) => {
+        await this.refresh({
+          only: [partitionKey],
+          ...(cfg.minVersion !== undefined ? { minVersion: cfg.minVersion } : {}),
+        })
+      },
+      (collection) => this.models.some((m) => m.source === collection),
+      undefined,
+      cfg.debounceMs,
+    )
+    this.autoPush = controller
+    const prefix = `${this.group.name}--`
+    this.group.db.on('change', (e) => {
+      if (!e.vault.startsWith(prefix)) return
+      controller.noteWrite(e.vault.slice(prefix.length), e.collection)
+    })
+  }
+
+  /**
+   * Await any pending auto-push flush. Resolves immediately when
+   * `freshness.autoPush` is off or nothing is pending.
+   */
+  async whenSettled(): Promise<void> {
+    if (this.autoPush) await this.autoPush.whenSettled()
+  }
 
   /** An output collection of the read-model vault (keyed by model `name`). */
   collection<S extends Record<string, unknown> = Record<string, unknown>>(model: string): Collection<S> {
@@ -175,12 +248,7 @@ export class ReadModel<T> {
         }
         healthyShards.add(row.partitionKey)
         if (model.kind === 'rollup') {
-          const ctx: CrossVaultDerivationContext = {
-            vaultId: row.vaultId,
-            partitionKey: row.partitionKey,
-            schemaVersion: row.schemaVersion,
-          }
-          const summary = (model.derive as (r: Record<string, unknown>[], c: CrossVaultDerivationContext) => Record<string, unknown>)(res.result.map((e) => e.record), ctx)
+          const summary = deriveShardSummary(model, res.result.map((e) => e.record), row)
           checkPosture(model, summary, row.partitionKey)
           await out.put(row.partitionKey, {
             ...summary,
@@ -268,5 +336,8 @@ export async function openReadModel<T>(
     }
   }
   const vault = await group.db.openVault(target)
-  return new ReadModel(group, target, vault, opts.models)
+  const rm = new ReadModel(group, target, vault, opts.models)
+  const autoPush = opts.freshness?.autoPush
+  if (autoPush) rm._armAutoPush(autoPush === true ? {} : autoPush)
+  return rm
 }
