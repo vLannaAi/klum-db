@@ -323,7 +323,7 @@ export type { PortalState, PortalInviteAuditRef } from './federation/types.js'
 // ─── Federated read-model (#44) ───────────────────────────────────────────────
 export { PostureViolationError } from './federation/read-model.js'
 export type {
-  ReadModel, ReadModelSpec, RollupModelSpec, ReadModelPosture,
+  ReadModel, ReadModelSpec, RollupModelSpec, MirrorModelSpec, ReadModelPosture,
   OpenReadModelOptions, ReadModelRefreshResult,
 } from './federation/read-model.js'
 
