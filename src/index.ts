@@ -53,6 +53,11 @@ import type { ShareLink } from '@noy-db/hub/share-link'
 import type { VaultRegistryRow } from './federation/types.js'
 import type { ResolvedShareLink, BuildShareLinkForClientOptions } from './portal/share-link.js'
 
+// ─── Portal provisioning imports (#42, used in Lobby method signatures) ───────
+import type {
+  ProvisionPortalOptions, ProvisionPortalResult, RevokePortalInviteOptions,
+} from './portal/provision.js'
+
 // ─── Dock imports (lower tier read-only units) ────────────────────────────────
 import { DockedUnit } from './dock/docked-unit.js'
 import type { UnitDriver } from './dock/unit-driver.js'
@@ -147,6 +152,38 @@ export class Lobby {
   ): Promise<string> {
     const { buildShareLinkForClient } = await import('./portal/share-link.js')
     return buildShareLinkForClient(parts, opts.registry)
+  }
+
+  // ─── Portal provisioning (#42) ────────────────────────────────────────────
+
+  /**
+   * Provision (or re-invite, `mode: 'rebind'`) a client portal vault in
+   * one audited operation: ensure the shard, assign the portal handle
+   * (#43's link target), apply firm grants, issue the magic-link invite,
+   * stamp the audit trail on the fleet registry row.
+   * Needs `@noy-db/on-magic-link` (optional peer) and a session created
+   * with `teamStrategy: withTeam()`.
+   * Delegates to `provisionPortal` in `portal/provision.ts`.
+   */
+  async provisionPortal<T>(
+    group: VaultGroup<T>,
+    opts: ProvisionPortalOptions,
+  ): Promise<ProvisionPortalResult> {
+    const { provisionPortal: provisionPortalFn } = await import('./portal/provision.js')
+    return provisionPortalFn(this.noydb, group, opts)
+  }
+
+  /**
+   * Revoke an outstanding portal invite and stamp `revokedAt` on the
+   * fleet audit trail. Idempotent; fails closed on an unknown tokenId.
+   * Delegates to `revokePortalInvite` in `portal/provision.ts`.
+   */
+  async revokePortalInvite<T>(
+    group: VaultGroup<T>,
+    opts: RevokePortalInviteOptions,
+  ): Promise<VaultRegistryRow> {
+    const { revokePortalInvite: revokePortalInviteFn } = await import('./portal/provision.js')
+    return revokePortalInviteFn(this.noydb, group, opts)
   }
 
   // ─── FR-7 Surface API ─────────────────────────────────────────────────────
@@ -255,6 +292,12 @@ export { ShareLinkResolutionError } from './portal/share-link.js'
 export type {
   ShareLinkResolutionErrorCode, ResolvedShareLink, BuildShareLinkForClientOptions,
 } from './portal/share-link.js'
+
+// ─── Portal provisioning (#42) ────────────────────────────────────────────────
+export type {
+  ProvisionPortalOptions, ProvisionPortalResult, RevokePortalInviteOptions, PortalFirmGrant,
+} from './portal/provision.js'
+export type { PortalState, PortalInviteAuditRef } from './federation/types.js'
 
 // Federation tooling (WS-3): drive the @noy-db dev-tools / meter over a vault group.
 export { groupInspector } from './federation/group-inspector.js'

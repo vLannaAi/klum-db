@@ -52,13 +52,17 @@
     "@noy-db/as-xlsx": "^0.4.0-pre.0",
     "@noy-db/hub": "^0.4.0-pre.1",
     "@noy-db/in-devtools": "^0.4.0-pre.0",
-    "@noy-db/to-meter": "^0.4.0-pre.0"
+    "@noy-db/to-meter": "^0.4.0-pre.0",
+    "@noy-db/on-magic-link": "^0.4.0-pre.1"
   },
   "peerDependenciesMeta": {
     "@noy-db/in-devtools": {
       "optional": true
     },
     "@noy-db/to-meter": {
+      "optional": true
+    },
+    "@noy-db/on-magic-link": {
       "optional": true
     }
   },
@@ -68,6 +72,7 @@
     "@noy-db/as-zip": "0.4.0-pre.1",
     "@noy-db/hub": "0.4.0-pre.1",
     "@noy-db/in-devtools": "0.4.0-pre.1",
+    "@noy-db/on-magic-link": "0.4.0-pre.1",
     "@noy-db/to-memory": "0.4.0-pre.1",
     "@noy-db/to-meter": "0.4.0-pre.1",
     "@types/node": "^22.0.0",
