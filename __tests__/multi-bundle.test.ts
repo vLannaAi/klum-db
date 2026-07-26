@@ -8,7 +8,7 @@ import {
   readMultiVaultBundleCompartment,
   type MultiBundleManifest,
 } from '../src/bundle/multi-bundle.js'
-import { writeNoydbBundle, readNoydbBundle, readNoydbBundleHeader } from '@noy-db/hub/bundle'
+import { writeNoydbBundle, readNoydbBundle, readNoydbBundleHeader } from '@noy-db/hub/pod'
 import { createNoydb } from '@noy-db/hub'
 import type { Noydb } from '@noy-db/hub'
 import type {

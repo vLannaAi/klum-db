@@ -15,7 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
-import { extractPartition } from '@noy-db/hub/bundle'
+import { extractPartition } from '@noy-db/hub/cargo'
 import { memory } from '@noy-db/to-memory'
 import { mergeCompartment } from '../src/interchange/merge-compartment.js'
 import { FieldAuthorityPolicyMissingError } from '../src/interchange/field-authority.js'

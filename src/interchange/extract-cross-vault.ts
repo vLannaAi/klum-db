@@ -9,7 +9,7 @@ import {
   extractPartition,
   describeExtraction,
   type ExtractionPreview,
-} from '@noy-db/hub/bundle'
+} from '@noy-db/hub/cargo'
 import { readPodHeader } from '@noy-db/hub/pod'
 import { sha256Hex, generateULID } from '@noy-db/hub/cargo'
 import {

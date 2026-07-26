@@ -16,7 +16,7 @@
  * @module
  */
 import type { Vault } from '@noy-db/hub/cargo'
-import { decryptExtractedPartition } from '@noy-db/hub/bundle'
+import { decryptExtractedPartition } from '@noy-db/hub/cargo'
 import {
   mergeDecryptedRecords,
   type MergeCompartmentOptions,
