@@ -37,15 +37,13 @@ function walkTs(dir, cb) {
 //                             change-observation; see cargo-surface.golden.json)
 //   - '@noy-db/hub/pod'     (vault-at-rest artifacts — writePod/readPod/
 //                             readPodHeader/...; see pod-surface.golden.json)
-//   - '@noy-db/hub/bundle'  (deprecated legacy alias — kept ONLY for
-//                             extractPartition/adoptPartition/
-//                             createOwnerOnAdoptedPartition/
-//                             decryptExtractedPartition/DecryptedRecord,
-//                             the source-side partition-extraction + merge
-//                             primitives, which have no /cargo or /pod
-//                             equivalent yet. Remove this allowance once
-//                             those land on a canonical subpath.)
-const ALLOWED_SUBPATHS = new Set([undefined, '/cargo', '/pod', '/bundle'])
+//   - '@noy-db/hub/share-link' (portal link grammar (#806) — pure string
+//                             code, zero hub-floor deps; the fleet half of
+//                             deep-link addressing (#43) lives here.)
+// The '/bundle' allowance was retired with noy-db#812 step 1: every
+// partition primitive src/ used now lives on '/cargo' (adopt-side
+// primitives remain on /bundle but only tests touch them).
+const ALLOWED_SUBPATHS = new Set([undefined, '/cargo', '/pod', '/share-link'])
 const HUB_IMPORT_RE = /(?:from|import|require)\s*\(?\s*['"]@noy-db\/hub(\/[^'"]*)?['"]/g
 function checkHubSeam() {
   walkTs(join(ROOT, 'src'), (file, code) => {
@@ -56,7 +54,7 @@ function checkHubSeam() {
       if (!ALLOWED_SUBPATHS.has(sub)) {
         fail(
           'klum-only-seam',
-          `imports '@noy-db/hub${sub ?? ''}' — klum-db must import @noy-db/hub only via the root barrel, '@noy-db/hub/cargo', or '@noy-db/hub/pod' (plus the deprecated '@noy-db/hub/bundle' allowance documented above).`,
+          `imports '@noy-db/hub${sub ?? ''}' — klum-db must import @noy-db/hub only via the root barrel, '@noy-db/hub/cargo', '@noy-db/hub/pod', or '@noy-db/hub/share-link'.`,
           file,
         )
       }

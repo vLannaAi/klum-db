@@ -47,6 +47,12 @@ export interface ExportMultiVaultXlsxOptions {
 import type { SurfaceRow } from './federation/types.js'
 import type { MergeReport } from './interchange/merge-compartment.js'
 
+// ─── Portal deep-link imports (#43, used in Lobby method signatures) ──────────
+import type { Collection } from '@noy-db/hub'
+import type { ShareLink } from '@noy-db/hub/share-link'
+import type { VaultRegistryRow } from './federation/types.js'
+import type { ResolvedShareLink, BuildShareLinkForClientOptions } from './portal/share-link.js'
+
 // ─── Dock imports (lower tier read-only units) ────────────────────────────────
 import { DockedUnit } from './dock/docked-unit.js'
 import type { UnitDriver } from './dock/unit-driver.js'
@@ -110,6 +116,37 @@ export class Lobby {
   async graduate(docked: DockedUnit, opts: GraduateOptions): Promise<GraduationReport> {
     const { graduate: graduateFn } = await import('./dock/graduate.js')
     return graduateFn(this.noydb, docked, opts)
+  }
+
+  // ─── Portal deep-link addressing (#43) ────────────────────────────────────
+
+  /**
+   * Resolve a portal share link (raw URL/path or a parsed `ShareLink`)
+   * against the fleet registry: `vaultHandle → registry row` plus a
+   * console-route descriptor the firm app turns into its own URL.
+   * Unknown/foreign handles fail closed with `ShareLinkResolutionError`.
+   * Delegates to `resolveShareLinkAgainstRegistry` in `portal/share-link.ts`.
+   */
+  async resolveShareLink(
+    link: string | URL | ShareLink,
+    opts: { readonly registry: Collection<VaultRegistryRow> },
+  ): Promise<ResolvedShareLink> {
+    const { resolveShareLinkAgainstRegistry } = await import('./portal/share-link.js')
+    return resolveShareLinkAgainstRegistry(link, opts.registry)
+  }
+
+  /**
+   * Mint a portal share link for a fleet client (`client` partition key +
+   * `group`), delegating the link grammar to `@noy-db/hub/share-link`.
+   * Fails closed when the client is unknown or has no portal handle.
+   * Delegates to `buildShareLinkForClient` in `portal/share-link.ts`.
+   */
+  async buildShareLink(
+    parts: BuildShareLinkForClientOptions,
+    opts: { readonly registry: Collection<VaultRegistryRow> },
+  ): Promise<string> {
+    const { buildShareLinkForClient } = await import('./portal/share-link.js')
+    return buildShareLinkForClient(parts, opts.registry)
   }
 
   // ─── FR-7 Surface API ─────────────────────────────────────────────────────
@@ -212,6 +249,12 @@ export type {
   GroupMeta, FederationMeta,
 } from './federation/index.js'
 export type { GroupedRow as CrossVaultGroupedRow } from './federation/index.js'
+
+// ─── Portal deep-link addressing (#43) ────────────────────────────────────────
+export { ShareLinkResolutionError } from './portal/share-link.js'
+export type {
+  ShareLinkResolutionErrorCode, ResolvedShareLink, BuildShareLinkForClientOptions,
+} from './portal/share-link.js'
 
 // Federation tooling (WS-3): drive the @noy-db dev-tools / meter over a vault group.
 export { groupInspector } from './federation/group-inspector.js'
