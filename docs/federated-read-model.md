@@ -106,8 +106,16 @@ readers filter), not an engine feature.
 ### 6 · Relationship to existing machinery
 
 - `withCrossVaultDerivation` **stays** (shipped API); `kind: 'rollup'` is its
-  successor inside the read-model frame. Internally one engine; the old entry
-  point becomes a thin adapter. No breaking change.
+  successor inside the read-model frame. *(Amended in S3, #57.)* What is
+  genuinely one engine: the auto-push controller (`InsightAutoPush`),
+  eligibility resolution (`resolveEligible`), and the derive core
+  (`deriveShardSummary` — the ctx contract can never drift between paths).
+  The WRITE halves stay separate **on purpose**: full delegation would either
+  add provenance stamps to legacy rows (a breaking shape change the "no
+  breaking change" clause forbids — legacy rows are byte-exact, no stamps, no
+  posture, no reconcile) or demand a three-flag engine plus per-spec
+  target-vault fan-out and duplicated eligibility probes — strictly worse
+  than two clear write loops over one shared core.
 - `crossShardJoin` stays the *ad-hoc* cross-shard read; the read-model is the
   *maintained* one. A page that needs it fresh-now joins; a page that needs it
   cheap reads the model.

@@ -12,6 +12,7 @@ import { StateManagementVault } from './state-vault.js'
 import { CrossShardJoinError, DataResidencyError, ReservedVaultNameError, ShardProvisioningError, UnknownShardError, ValidationError } from '@noy-db/hub/cargo'
 import { STATE_VAULT_NAME } from './constants.js'
 import { classifyShardSkip } from './classify-skip.js'
+import { deriveShardSummary } from './read-model.js'
 import { applyBroadcastLegs } from './cross-shard-join.js'
 import type { CoPartitionedLeg, BroadcastLeg, CrossShardJoinOptions, BroadcastJoinOptions } from './cross-shard-join.js'
 import { CrossVaultLive } from './cross-vault-live.js'
@@ -33,7 +34,6 @@ import type {
   LiveQueryOptions,
   CrossVaultLiveQuery,
   CrossVaultDerivationSpec,
-  CrossVaultDerivationContext,
   RefreshInsightsResult,
   MigrationStatusRow,
   SchemaRolloutResult,
@@ -391,12 +391,7 @@ export class VaultGroup<T> {
           skipped.push({ vaultId: row.vaultId, reason: 'error', ...(res?.error ? { error: res.error } : {}) })
           continue
         }
-        const ctx: CrossVaultDerivationContext = {
-          vaultId: row.vaultId,
-          partitionKey: row.partitionKey,
-          schemaVersion: row.schemaVersion,
-        }
-        const summary = spec.derive(res.result, ctx)
+        const summary = deriveShardSummary(spec, res.result, row)
         await out.put(row.partitionKey, summary)
         written++
       }
@@ -418,17 +413,12 @@ export class VaultGroup<T> {
     const row = await this.registry.get(this.registryId(partitionKey))
     if (!row) return
     const shard = await this.openShard(partitionKey)
-    const ctx: CrossVaultDerivationContext = {
-      vaultId: row.vaultId,
-      partitionKey,
-      schemaVersion: row.schemaVersion,
-    }
     for (const spec of this.crossVaultDerivations) {
       if (!spec.autoPush) continue
       const min = autoPushConfig(spec)?.minVersion
       if (min !== undefined && row.schemaVersion < min) continue // gated: behind-version shard (#13)
       const records = await shard.collection<Record<string, unknown>>(spec.source).list()
-      const summary = spec.derive(records, ctx)
+      const summary = deriveShardSummary(spec, records, row)
       const insight = await this.db.openVault(spec.target.vault)
       await insight.collection<Record<string, unknown>>(spec.target.collection).put(partitionKey, summary)
     }
