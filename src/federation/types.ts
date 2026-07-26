@@ -53,6 +53,24 @@ export interface VaultRegistryRow {
    * links address (#43). Absent until a portal is provisioned for the shard.
    */
   readonly handle?: string
+  /** Portal bookkeeping (#42): enabled flag + invite audit trail. */
+  readonly portal?: PortalState
+}
+
+/** One issued portal invite in the fleet audit trail (#42). Safe fields only — never the encoded invite. */
+export interface PortalInviteAuditRef {
+  readonly tokenId: string
+  readonly userId: string
+  readonly kind: 'invite' | 'rebind'
+  readonly issuedAt: number
+  readonly expiresAt: string
+  readonly revokedAt?: number
+}
+
+/** Portal state on a fleet registry row (#42). */
+export interface PortalState {
+  readonly enabledAt: number
+  readonly invites: readonly PortalInviteAuditRef[]
 }
 
 /** How a VaultGroup maps records to shards. */

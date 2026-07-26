@@ -23,6 +23,9 @@ importers:
       '@noy-db/in-devtools':
         specifier: 0.4.0-pre.1
         version: 0.4.0-pre.1(@noy-db/hub@0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76)))
+      '@noy-db/on-magic-link':
+        specifier: 0.4.0-pre.1
+        version: 0.4.0-pre.1(@noy-db/hub@0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@noy-db/to-memory':
         specifier: 0.4.0-pre.1
         version: 0.4.0-pre.1(@noy-db/hub@0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76)))
@@ -314,6 +317,12 @@ packages:
 
   '@noy-db/in-devtools@0.4.0-pre.1':
     resolution: {integrity: sha512-Si9ntHPmP/FXQqFCRVF4yODrzn5m4eFvmo0ZNIkWKJCVXcMx0XKiWazIucWLWsr5XnJ3rRHguuPgNKyf6yiJpA==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@noy-db/hub': 0.4.0-pre.1
+
+  '@noy-db/on-magic-link@0.4.0-pre.1':
+    resolution: {integrity: sha512-FnYSRsVZ32X4EmCqXaRgyJG7qLB/9RVW36+1ak6PW7I4gqYJDcZMvEbevHmsSZiAjIHkjlfo12VoZxinA8JZRw==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@noy-db/hub': 0.4.0-pre.1
@@ -1418,6 +1427,10 @@ snapshots:
       zod-to-json-schema: 3.25.2(zod@3.25.76)
 
   '@noy-db/in-devtools@0.4.0-pre.1(@noy-db/hub@0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+    dependencies:
+      '@noy-db/hub': 0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76))
+
+  '@noy-db/on-magic-link@0.4.0-pre.1(@noy-db/hub@0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
       '@noy-db/hub': 0.4.0-pre.1(zod-to-json-schema@3.25.2(zod@3.25.76))
 
