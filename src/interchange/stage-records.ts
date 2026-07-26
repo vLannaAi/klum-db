@@ -10,7 +10,7 @@
  * @module
  */
 import type { Vault } from '@noy-db/hub/cargo'
-import type { DecryptedRecord } from '@noy-db/hub/bundle'
+import type { DecryptedRecord } from '@noy-db/hub/cargo'
 
 /** A pure record-body transform: old body → new body. */
 export type RecordTransform = (body: Record<string, unknown>) => Record<string, unknown>

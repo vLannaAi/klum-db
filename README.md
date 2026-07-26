@@ -111,7 +111,7 @@ const report = await migrateThenMerge(receiver, compartmentBytes, {
 
 | Capability | What it does | API |
 |---|---|---|
-| **Bundle** (FR-1) | Multi-compartment `.noydb` container + pre-decrypt manifest | `@noy-db/hub/bundle` · `writeMultiVaultBundle` |
+| **Bundle** (FR-1) | Multi-compartment `.noydb` container + pre-decrypt manifest | `@noy-db/hub/pod` · `writeMultiVaultBundle` |
 | **Relocate** (FR-2) | Cross-vault FK-closure extraction → bundle | `extractCrossVaultPartition` / `walkCrossVaultClosure` |
 | **Merge** (FR-3) | Reconcile a compartment into an existing vault | `mergeCompartment` |
 | **Authority** (FR-4) | Per-**field** conflict resolution (registry-newest vs owner) | `resolveFieldAuthority` · `strategy: 'field-authority'` |

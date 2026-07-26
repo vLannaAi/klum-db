@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
-import { extractPartition } from '@noy-db/hub/bundle'
+import { extractPartition } from '@noy-db/hub/cargo'
 import { memory } from '@noy-db/to-memory'
 import {
   migrateThenMerge,

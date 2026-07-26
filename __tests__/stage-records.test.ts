@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { memory } from '@noy-db/to-memory'
-import type { DecryptedRecord } from '@noy-db/hub/bundle'
+import type { DecryptedRecord } from '@noy-db/hub/cargo'
 import { stageAndValidate, MigrationTransformRequiredError } from '../src/interchange/stage-records.js'
 
 function rec(id: string, record: Record<string, unknown>): DecryptedRecord {

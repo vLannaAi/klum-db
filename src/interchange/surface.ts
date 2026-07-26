@@ -5,7 +5,7 @@
  */
 import { generateULID } from '@noy-db/hub/cargo'
 import type { Vault } from '@noy-db/hub/cargo'
-import { extractPartition } from '@noy-db/hub/bundle'
+import { extractPartition } from '@noy-db/hub/cargo'
 import { mergeCompartment, type MergeReport } from './merge-compartment.js'
 import type { StateManagementVault } from '../federation/state-vault.js'
 import type {

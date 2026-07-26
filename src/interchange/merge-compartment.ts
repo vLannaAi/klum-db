@@ -13,7 +13,7 @@
  */
 import type { Vault } from '@noy-db/hub/cargo'
 import { diffVault } from '@noy-db/hub/cargo'
-import { decryptExtractedPartition, type DecryptedRecord } from '@noy-db/hub/bundle'
+import { decryptExtractedPartition, type DecryptedRecord } from '@noy-db/hub/cargo'
 import {
   resolveRecordByFieldAuthority,
   FieldAuthorityPolicyMissingError,
