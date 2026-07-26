@@ -58,6 +58,9 @@ import type {
   ProvisionPortalOptions, ProvisionPortalResult, RevokePortalInviteOptions,
 } from './portal/provision.js'
 
+// ─── Read-model imports (#44 S1, used in Lobby method signatures) ─────────────
+import type { OpenReadModelOptions, ReadModel } from './federation/read-model.js'
+
 // ─── Dock imports (lower tier read-only units) ────────────────────────────────
 import { DockedUnit } from './dock/docked-unit.js'
 import type { UnitDriver } from './dock/unit-driver.js'
@@ -186,6 +189,24 @@ export class Lobby {
     return revokePortalInviteFn(this.noydb, group, opts)
   }
 
+  // ─── Federated read-model (#44) ───────────────────────────────────────────
+
+  /**
+   * Open a maintained federated read-model over `group` (#44 S1): rollup
+   * models reduce each shard's `source` into one summary row per shard in
+   * the read-model vault — deterministic ids, `_shard`/`_sourceVersion`
+   * provenance, fail-closed `posture.surface` allowlist, explicit
+   * `refresh()`. Spec: docs/federated-read-model.md.
+   * Delegates to `openReadModel` in `federation/read-model.ts`.
+   */
+  async openReadModel<T>(
+    group: VaultGroup<T>,
+    opts: OpenReadModelOptions,
+  ): Promise<ReadModel<T>> {
+    const { openReadModel: openReadModelFn } = await import('./federation/read-model.js')
+    return openReadModelFn(group, opts)
+  }
+
   // ─── FR-7 Surface API ─────────────────────────────────────────────────────
 
   /**
@@ -298,6 +319,13 @@ export type {
   ProvisionPortalOptions, ProvisionPortalResult, RevokePortalInviteOptions, PortalFirmGrant,
 } from './portal/provision.js'
 export type { PortalState, PortalInviteAuditRef } from './federation/types.js'
+
+// ─── Federated read-model (#44) ───────────────────────────────────────────────
+export { PostureViolationError } from './federation/read-model.js'
+export type {
+  ReadModel, ReadModelSpec, RollupModelSpec, ReadModelPosture,
+  OpenReadModelOptions, ReadModelRefreshResult,
+} from './federation/read-model.js'
 
 // Federation tooling (WS-3): drive the @noy-db dev-tools / meter over a vault group.
 export { groupInspector } from './federation/group-inspector.js'
