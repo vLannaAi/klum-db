@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { createLobby } from '../src/index.js'
 import { InMemoryUnitDriver } from '../src/dock/unit-driver.js'
 import { DockedUnit } from '../src/dock/docked-unit.js'
 
 async function lobby() {
-  const db = await createNoydb({ store: memory(), user: 'firm', secret: 'firm-secret-123' })
+  const db = await createNoydb({ store: toMemory(), user: 'firm', secret: 'firm-secret-123' })
   return createLobby(db)
 }
 

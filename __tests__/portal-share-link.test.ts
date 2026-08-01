@@ -11,14 +11,14 @@ import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { parseShareLink } from '@noy-db/hub/share-link'
 import { generateULID } from '@noy-db/hub/cargo'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { createLobby, ShareLinkResolutionError, type VaultRegistryRow } from '../src/index.js'
 
 const ACME_HANDLE = generateULID()
 const BETA_HANDLE = generateULID()
 
 async function buildFleet() {
-  const db = await createNoydb({ store: memory(), user: 'operator', secret: 'op-pass' })
+  const db = await createNoydb({ store: toMemory(), user: 'operator', secret: 'op-pass' })
   const lobby = createLobby(db)
   const state = await db.openVault('state')
   const registry = state.collection<VaultRegistryRow>('vault-registry')

@@ -7,7 +7,7 @@
  */
 import { reduceRecords } from '@noy-db/hub/cargo'
 import { groupAndReduce } from '@noy-db/hub/cargo'
-import type { AggregateResult, AggregateSpec } from '@noy-db/hub/cargo'
+import type { ReduceResult, ReduceSpec } from '@noy-db/hub/cargo'
 import type {
   FanoutQueryOptions,
   SkippedVault,
@@ -26,7 +26,7 @@ export interface FanoutRecordSource<R> {
   fanoutRecords(options: FanoutQueryOptions): Promise<{ records: R[]; skippedVaults: SkippedVault[] }>
   /** Optional distributed partial-reduce (#8): fold each shard to a state in-callback. */
   fanoutReduce?(
-    spec: AggregateSpec,
+    spec: ReduceSpec,
     options: FanoutQueryOptions,
   ): Promise<{ partials: PartialState[]; skippedVaults: SkippedVault[] }>
 }
@@ -45,7 +45,7 @@ export interface LiveBinding {
  * central-reduce. The result is identical either way. `.live()` and grouped
  * aggregates remain central-reduce.
  */
-export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
+export class CrossVaultAggregation<R, Spec extends ReduceSpec> {
   constructor(
     private readonly src: FanoutRecordSource<R>,
     private readonly spec: Spec,
@@ -53,7 +53,7 @@ export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
   ) {}
 
   async run(options: FanoutQueryOptions = {}): Promise<{
-    result: AggregateResult<Spec>
+    result: ReduceResult<Spec>
     skippedVaults: SkippedVault[]
   }> {
     // Distributed partial-reduce when every reducer has `merge` and the source
@@ -66,11 +66,11 @@ export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
     return { result: reduceRecords(records, this.spec), skippedVaults }
   }
 
-  live(options: LiveQueryOptions = {}): CrossVaultLiveAggregation<AggregateResult<Spec>> {
+  live(options: LiveQueryOptions = {}): CrossVaultLiveAggregation<ReduceResult<Spec>> {
     if (!this.bind) throw new Error('CrossVaultAggregation: live() requires a LiveBinding — use ShardedQuery.aggregate()')
     const spec = this.spec
     const src = this.src
-    const core = new CrossVaultLive<{ value: AggregateResult<Spec> | undefined; skipped: SkippedVault[] }>({
+    const core = new CrossVaultLive<{ value: ReduceResult<Spec> | undefined; skipped: SkippedVault[] }>({
       subscribeToChanges: this.bind.subscribeToChanges,
       isRelevant: this.bind.isRelevant,
       compute: async () => {
@@ -95,7 +95,7 @@ export class CrossVaultAggregation<R, Spec extends AggregateSpec> {
  * One-shot cross-vault grouped aggregate. Concatenates all shard records and
  * runs a single central group-and-reduce, emitting one row per bucket.
  */
-export class CrossVaultGroupedAggregation<R, F extends string, Spec extends AggregateSpec> {
+export class CrossVaultGroupedAggregation<R, F extends string, Spec extends ReduceSpec> {
   constructor(
     private readonly src: FanoutRecordSource<R>,
     private readonly field: F,

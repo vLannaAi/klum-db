@@ -102,7 +102,7 @@ export async function provisionPortal<T>(
 
   for (const g of opts.firmGrants ?? []) {
     await db.grant(vaultId, {
-      userId: g.userId, displayName: g.displayName, role: g.role, passphrase: g.passphrase,
+      userId: g.userId, displayName: g.displayName, role: g.role, secret: g.passphrase,
     })
   }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb, isDeedVault, MemorySealingKeyProvider } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { createLobby } from '../src/index.js'
 import { InMemoryUnitDriver } from '../src/dock/unit-driver.js'
 import { MigrationTransformRequiredError } from '../src/interchange/stage-records.js'
@@ -8,7 +8,7 @@ import { UnitGraduationError } from '../src/dock/graduate.js'
 import type { VaultTemplate } from '../src/federation/index.js'
 
 async function lobby() {
-  const db = await createNoydb({ store: memory(), user: 'firm', secret: 'firm-secret-123' })
+  const db = await createNoydb({ store: toMemory(), user: 'firm', secret: 'firm-secret-123' })
   return { db, lob: createLobby(db) }
 }
 

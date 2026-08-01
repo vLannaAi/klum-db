@@ -17,7 +17,7 @@ import { z } from 'zod'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
 import { extractPartition } from '@noy-db/hub/cargo'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import {
   migrateThenMerge,
   MinVersionError,
@@ -35,7 +35,7 @@ interface SimpleClientWithNote { id: string; name: string; note?: string }
 
 /** Source vault with OLD shape { id, fullName }. */
 async function buildOldBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-old', secret: 'src-old-secret-123', cargoStrategy: withCargo() })
+  const sourceDb = await createNoydb({ store: toMemory(), user: 'src-old', secret: 'src-old-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-old')
   const clients = source.collection<OldClient>('clients')
   await clients.put('c1', { id: 'c1', fullName: 'Jane Doe' })
@@ -52,7 +52,7 @@ async function buildOldBundle() {
  * The collection is declared with a zod schema so validateInput actually enforces it.
  */
 async function buildNewSchemaReceiver() {
-  const db = await createNoydb({ store: memory(), user: 'recv-new', secret: 'recv-new-secret-456' })
+  const db = await createNoydb({ store: toMemory(), user: 'recv-new', secret: 'recv-new-secret-456' })
   const vault = await db.openVault('receiver-new')
   // Register the target schema — collection validation will enforce it
   vault.collection<NewClient>('clients', {
@@ -69,7 +69,7 @@ async function buildNewSchemaReceiver() {
 
 /** Source vault with { id, name } — the base shape. */
 async function buildSimpleBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-simple', secret: 'src-simple-secret-123', cargoStrategy: withCargo() })
+  const sourceDb = await createNoydb({ store: toMemory(), user: 'src-simple', secret: 'src-simple-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-simple')
   const clients = source.collection<SimpleClient>('clients')
   await clients.put('c1', { id: 'c1', name: 'Alice' })
@@ -86,7 +86,7 @@ async function buildSimpleBundle() {
  * Incoming records `{ id, name }` still pass this schema (extra optional field is fine).
  */
 async function buildAdditiveReceiver() {
-  const db = await createNoydb({ store: memory(), user: 'recv-add', secret: 'recv-add-secret-456' })
+  const db = await createNoydb({ store: toMemory(), user: 'recv-add', secret: 'recv-add-secret-456' })
   const vault = await db.openVault('receiver-add')
   vault.collection<SimpleClientWithNote>('clients', {
     schema: z.object({
@@ -101,7 +101,7 @@ async function buildAdditiveReceiver() {
 // ─── Helpers: case (e) — same-version direct merge ───────────────────────────
 
 async function buildSameVersionBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-sv', secret: 'src-sv-secret-123', cargoStrategy: withCargo() })
+  const sourceDb = await createNoydb({ store: toMemory(), user: 'src-sv', secret: 'src-sv-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-sv')
   const clients = source.collection<SimpleClient>('clients')
   await clients.put('c1', { id: 'c1', name: 'Alice' })
@@ -113,7 +113,7 @@ async function buildSameVersionBundle() {
 }
 
 async function buildSameVersionReceiver() {
-  const db = await createNoydb({ store: memory(), user: 'recv-sv', secret: 'recv-sv-secret-456' })
+  const db = await createNoydb({ store: toMemory(), user: 'recv-sv', secret: 'recv-sv-secret-456' })
   const vault = await db.openVault('receiver-sv')
   return vault
 }
@@ -237,7 +237,7 @@ describe('migrateThenMerge', () => {
   // (f) Multi-step chain applies in ascending order; out-of-window steps excluded
   it('(f) applies a v0→v1→v2 chain in order and excludes steps above toVersion', async () => {
     const { bundleBytes, transferKey } = await buildOldBundle()
-    const db = await createNoydb({ store: memory(), user: 'recv-chain', secret: 'recv-chain-secret-789' })
+    const db = await createNoydb({ store: toMemory(), user: 'recv-chain', secret: 'recv-chain-secret-789' })
     const receiver = await db.openVault('receiver-chain')
     receiver.collection<{ id: string; firstName: string; lastName: string; display: string }>('clients', {
       schema: z.object({
@@ -273,7 +273,7 @@ describe('migrateThenMerge', () => {
   //     Uses a SCHEMALESS receiver — the exact path where validateInput would NOT catch it.
   it('(g) re-injects canonical id when a transform drops it (schemaless receiver)', async () => {
     const { bundleBytes, transferKey } = await buildSimpleBundle()
-    const db = await createNoydb({ store: memory(), user: 'recv-idrop', secret: 'recv-idrop-secret-789' })
+    const db = await createNoydb({ store: toMemory(), user: 'recv-idrop', secret: 'recv-idrop-secret-789' })
     const receiver = await db.openVault('receiver-idrop')
 
     const report = await migrateThenMerge(receiver, bundleBytes, {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { Lobby, createLobby } from '../src/index.js'
 import { generateULID } from '@noy-db/hub/cargo'
 import * as lobbyApi from '../src/index.js'
@@ -8,7 +8,7 @@ import * as lobbyApi from '../src/index.js'
 describe('Lobby', () => {
   it('wraps the Noydb instance whose vaults it orchestrates', async () => {
     const db = await createNoydb({
-      store: memory(),
+      store: toMemory(),
       user: 'alice',
       secret: 'correct-horse-battery-staple',
     })

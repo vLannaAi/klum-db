@@ -6,12 +6,12 @@
  * without materializing the union. Used by the scalar `.aggregate().run()` path
  * when every reducer exposes `merge` (else the caller falls back to central).
  */
-import type { AggregateResult, AggregateSpec } from '@noy-db/hub/cargo'
+import type { ReduceResult, ReduceSpec } from '@noy-db/hub/cargo'
 
 /**
  * Structural view of the kernel `Reducer` protocol. `Reducer` itself is not
  * exported on the `@noy-db/hub/cargo` boundary, so we model the shape locally
- * (an `AggregateSpec` value carries exactly these methods).
+ * (an `ReduceSpec` value carries exactly these methods).
  */
 interface ReducerLike {
   init(): unknown
@@ -25,12 +25,12 @@ interface ReducerLike {
 export type PartialState = Record<string, unknown>
 
 /** True iff every reducer in the spec exposes a callable `merge` (safe to partial-reduce). */
-export function canPartialReduce(spec: AggregateSpec): boolean {
+export function canPartialReduce(spec: ReduceSpec): boolean {
   return Object.values(spec).every((r) => typeof (r as ReducerLike).merge === 'function')
 }
 
 /** Fold one shard's records to a partial state per spec key (no finalize). */
-export function reduceToPartial(records: readonly unknown[], spec: AggregateSpec): PartialState {
+export function reduceToPartial(records: readonly unknown[], spec: ReduceSpec): PartialState {
   const out: PartialState = {}
   for (const [key, reducer] of Object.entries(spec)) {
     const r = reducer as ReducerLike
@@ -46,7 +46,7 @@ export function reduceToPartial(records: readonly unknown[], spec: AggregateSpec
  * `init()` (the merge identity) so an empty `partials` array yields the
  * empty-aggregate state.
  */
-export function mergePartials(spec: AggregateSpec, partials: readonly PartialState[]): PartialState {
+export function mergePartials(spec: ReduceSpec, partials: readonly PartialState[]): PartialState {
   const out: PartialState = {}
   for (const [key, reducer] of Object.entries(spec)) {
     const r = reducer as ReducerLike
@@ -58,10 +58,10 @@ export function mergePartials(spec: AggregateSpec, partials: readonly PartialSta
 }
 
 /** Finalize a merged state into the user-visible aggregate result. */
-export function finalizePartial<Spec extends AggregateSpec>(spec: Spec, merged: PartialState): AggregateResult<Spec> {
+export function finalizePartial<Spec extends ReduceSpec>(spec: Spec, merged: PartialState): ReduceResult<Spec> {
   const out: Record<string, unknown> = {}
   for (const [key, reducer] of Object.entries(spec)) {
     out[key] = (reducer as ReducerLike).finalize(merged[key])
   }
-  return out as AggregateResult<Spec>
+  return out as ReduceResult<Spec>
 }

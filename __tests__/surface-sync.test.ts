@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { StateManagementVault } from '../src/federation/state-vault.js'
 import type { SurfaceRow } from '../src/federation/types.js'
 import {
@@ -37,7 +37,7 @@ interface Secret { id: string; data: string }
 
 /** Build an agreed surface (two Noydb over a shared store). */
 async function buildAgreedSurface(def: SurfaceDefinition): Promise<SurfaceRow> {
-  const store = memory()
+  const store = toMemory()
   const dbA = await createNoydb({ store, user: 'partyA', encrypt: false })
   const dbB = await createNoydb({ store, user: 'partyB', encrypt: false })
   const smvA = await StateManagementVault.open(dbA)
@@ -61,7 +61,7 @@ describe('exportSurface / applySurface — scoped field-projected sync', () => {
     const surface = await buildAgreedSurface(pushDef)
 
     // Source vault: clients + secret (not in surface)
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const sourceVault = await sourceDb.openVault('source')
     const clients = sourceVault.collection<Client>('clients')
     await clients.put('c1', { id: 'c1', name: 'Alice', phone: '+1-555-0101' })
@@ -77,7 +77,7 @@ describe('exportSurface / applySurface — scoped field-projected sync', () => {
     expect(transferKey.length).toBe(32)
 
     // Receiver vault
-    const recvDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const recvVault = await recvDb.openVault('receiver')
 
     // Apply
@@ -104,24 +104,24 @@ describe('exportSurface / applySurface — scoped field-projected sync', () => {
   })
 
   it('non-agreed (proposed) surface throws SurfaceStateError on exportSurface', async () => {
-    const store = memory()
+    const store = toMemory()
     const dbA = await createNoydb({ store, user: 'partyA', encrypt: false })
     const smvA = await StateManagementVault.open(dbA)
     const proposed = await proposeSurface(smvA, pushDef, 'partyA', 1_000_000)
 
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123' })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123' })
     const sourceVault = await sourceDb.openVault('source')
 
     await expect(exportSurface(sourceVault, proposed)).rejects.toThrow(SurfaceStateError)
   })
 
   it('non-agreed (proposed) surface throws SurfaceStateError on applySurface', async () => {
-    const store = memory()
+    const store = toMemory()
     const dbA = await createNoydb({ store, user: 'partyA', encrypt: false })
     const smvA = await StateManagementVault.open(dbA)
     const proposed = await proposeSurface(smvA, pushDef, 'partyA', 1_000_000)
 
-    const recvDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const recvVault = await recvDb.openVault('receiver')
 
     await expect(applySurface(recvVault, proposed, new Uint8Array(16), new Uint8Array(32))).rejects.toThrow(SurfaceStateError)
@@ -140,13 +140,13 @@ describe('exportSurface / applySurface — scoped field-projected sync', () => {
     }
     const surface = await buildAgreedSurface(pullDef)
 
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const sourceVault = await sourceDb.openVault('source')
     await sourceVault.collection<Client>('clients').put('c1', { id: 'c1', name: 'Alice', phone: '+1-555-0101' })
 
     const { bundleBytes, transferKey } = await exportSurface(sourceVault, surface)
 
-    const recvDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const recvVault = await recvDb.openVault('receiver')
     const report = await applySurface(recvVault, surface, bundleBytes, transferKey)
 
@@ -168,7 +168,7 @@ describe('exportSurface — ensures only surface.collections are in the bundle',
       conflictPolicy: { strategy: 'take-incoming' },
     })
 
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const sourceVault = await sourceDb.openVault('source')
     await sourceVault.collection<Client>('clients').put('c1', { id: 'c1', name: 'Alice', phone: '555' })
     await sourceVault.collection<Secret>('secret').put('s1', { id: 's1', data: 'SENSITIVE' })
@@ -176,7 +176,7 @@ describe('exportSurface — ensures only surface.collections are in the bundle',
 
     const { bundleBytes, transferKey } = await exportSurface(sourceVault, surface)
 
-    const recvDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const recvVault = await recvDb.openVault('receiver')
     await applySurface(recvVault, surface, bundleBytes, transferKey)
 
@@ -203,7 +203,7 @@ describe('Lobby Surface API — delegate to surface.ts helpers', () => {
     })
 
     // Source Lobby
-    const srcDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const srcDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const srcLobby = createLobby(srcDb)
     interface Order { id: string; amount: number; note: string }
     const srcVault = await srcDb.openVault('orders')
@@ -213,7 +213,7 @@ describe('Lobby Surface API — delegate to surface.ts helpers', () => {
     const { bundleBytes, transferKey } = await srcLobby.exportSurface('orders', surface)
 
     // Receiver Lobby
-    const recvDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const recvLobby = createLobby(recvDb)
 
     const report = await recvLobby.applySurface('orders', surface, bundleBytes, transferKey)

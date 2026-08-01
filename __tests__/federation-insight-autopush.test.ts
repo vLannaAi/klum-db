@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { createLobby } from '../src/index.js'
 import type { VaultTemplate } from '../src/federation/index.js'
 import { InsightAutoPush } from '../src/federation/insight-auto-push.js'
@@ -20,7 +20,7 @@ function makeDerive() {
 }
 
 async function setup(opts: { autoPush: boolean | { debounceMs?: number; minVersion?: number }; derive: ReturnType<typeof makeDerive>; templateVersion?: number }) {
-  const db = await createNoydb({ store: memory(), user: 'firm', secret: 'firm-secret-12345' })
+  const db = await createNoydb({ store: toMemory(), user: 'firm', secret: 'firm-secret-12345' })
   const lobby = createLobby(db)
   lobby.withVaultTemplate('client', template)
   const group = await lobby.openVaultGroup<{ id: string }>('firm', {

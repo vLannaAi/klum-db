@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withTeam } from '@noy-db/hub/team'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { createLobby } from '../src/index.js'
 
 // ── zip helpers (mirrored from as-xlsx multivault-xlsx.test.ts) ────────────────
@@ -51,7 +51,7 @@ function readZipFile(bytes: Uint8Array, path: string): string | null {
  * This lets us assert that the directory_entities sheet has exactly {e1, e2} and NOT e3.
  */
 async function buildFixture() {
-  const adapter = memory()
+  const adapter = toMemory()
   const db = await createNoydb({ store: adapter, user: 'owner-01', secret: 'lobby-secret' })
 
   const primaryVault = await db.openVault('primary')
@@ -72,12 +72,12 @@ async function buildFixture() {
   const db2 = await createNoydb({ store: adapter, user: 'owner-01', secret: 'lobby-secret', teamStrategy: withTeam() })
   await db2.grant('primary', {
     userId: 'owner-01', displayName: 'Owner', role: 'owner',
-    passphrase: 'lobby-secret',
+    secret: 'lobby-secret',
     exportCapability: { plaintext: ['xlsx'] },
   })
   await db2.grant('directory', {
     userId: 'owner-01', displayName: 'Owner', role: 'owner',
-    passphrase: 'lobby-secret',
+    secret: 'lobby-secret',
     exportCapability: { plaintext: ['xlsx'] },
   })
   await db2.close()

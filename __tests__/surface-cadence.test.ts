@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { StateManagementVault } from '../src/federation/state-vault.js'
 import type { SurfaceRow } from '../src/federation/types.js'
 import {
@@ -117,7 +117,7 @@ describe('listDueSurfaces — filter wrapper', () => {
 
 describe('markSynced — stamps lastSyncAt + nextSyncDueAt in the SMV', () => {
   it('stamps lastSyncAt and nextSyncDueAt = now + cadenceMs', async () => {
-    const db = await createNoydb({ store: memory(), user: 'op', encrypt: false })
+    const db = await createNoydb({ store: toMemory(), user: 'op', encrypt: false })
     const smv = await StateManagementVault.open(db)
 
     const surface = makeAgreedSurface({ lastSyncAt: undefined, nextSyncDueAt: undefined })
@@ -131,7 +131,7 @@ describe('markSynced — stamps lastSyncAt + nextSyncDueAt in the SMV', () => {
   })
 
   it('isSurfaceDue is false immediately after markSynced, then true once now advances past nextSyncDueAt', async () => {
-    const db = await createNoydb({ store: memory(), user: 'op', encrypt: false })
+    const db = await createNoydb({ store: toMemory(), user: 'op', encrypt: false })
     const smv = await StateManagementVault.open(db)
 
     const surface = makeAgreedSurface({ lastSyncAt: undefined, nextSyncDueAt: undefined })

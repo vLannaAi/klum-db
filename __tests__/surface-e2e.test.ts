@@ -15,7 +15,7 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { StateManagementVault } from '../src/federation/state-vault.js'
 import {
   proposeSurface,
@@ -40,7 +40,7 @@ describe('Surface E2E — two-party scoped+projected sync (FR-7)', () => {
     const CADENCE = 60_000
 
     // ── 1. Shared state vault (both parties use the same store for the SMV)
-    const sharedStore = memory()
+    const sharedStore = toMemory()
     const dbA = await createNoydb({ store: sharedStore, user: 'partyA', encrypt: false })
     const dbB = await createNoydb({ store: sharedStore, user: 'partyB', encrypt: false })
     const smvA = await StateManagementVault.open(dbA)
@@ -68,7 +68,7 @@ describe('Surface E2E — two-party scoped+projected sync (FR-7)', () => {
     expect(agreed.agreedBy).toBe('partyB')
 
     // ── 4. Party A's data vault: clients + secret (NOT in surface)
-    const srcDb = await createNoydb({ store: memory(), user: 'srcPartyA', secret: 'src-secret-xr7', cargoStrategy: withCargo() })
+    const srcDb = await createNoydb({ store: toMemory(), user: 'srcPartyA', secret: 'src-secret-xr7', cargoStrategy: withCargo() })
     const srcVault = await srcDb.openVault('partyA-data')
     const clientsColl = srcVault.collection<Client>('clients')
     await clientsColl.put('c1', { id: 'c1', name: 'Alice', phone: '+1-555-0101' })
@@ -83,7 +83,7 @@ describe('Surface E2E — two-party scoped+projected sync (FR-7)', () => {
     expect(transferKey.length).toBe(32)
 
     // ── 6. Apply (Party B side — fresh Noydb receiver)
-    const recvDb = await createNoydb({ store: memory(), user: 'partyB-recv', secret: 'recv-secret-y9k' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'partyB-recv', secret: 'recv-secret-y9k' })
     const recvVault = await recvDb.openVault('partyB-data')
     const report = await applySurface(recvVault, agreed, bundleBytes, transferKey)
 
@@ -145,7 +145,7 @@ describe('Surface E2E — two-party scoped+projected sync (FR-7)', () => {
   })
 
   it('secondary: smvB can read the agreed surface that smvA wrote (shared store)', async () => {
-    const sharedStore = memory()
+    const sharedStore = toMemory()
     const dbA = await createNoydb({ store: sharedStore, user: 'partyA', encrypt: false })
     const smvA = await StateManagementVault.open(dbA)
 

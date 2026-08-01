@@ -327,8 +327,8 @@ describe('VaultGroup — key-custody-neutral fan-out', () => {
     })
     await opFirm.collection('invoices').put('a1', { clientId: 'acme', amount: 100, status: 'overdue' })
     await opFirm.collection('invoices').put('b1', { clientId: 'beta', amount: 200, status: 'overdue' })
-    await op.grant('firm--acme', { userId: 'advisor', displayName: 'Adv', role: 'viewer', passphrase: 'adv-pass' })
-    await op.grant('state', { userId: 'advisor', displayName: 'Adv', role: 'viewer', passphrase: 'adv-pass' })
+    await op.grant('firm--acme', { userId: 'advisor', displayName: 'Adv', role: 'viewer', secret: 'adv-pass' })
+    await op.grant('state', { userId: 'advisor', displayName: 'Adv', role: 'viewer', secret: 'adv-pass' })
 
     const adv = await createNoydb({ store: adapter, user: 'advisor', secret: 'adv-pass' })
     const advlobby = createLobby(adv)

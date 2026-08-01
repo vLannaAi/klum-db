@@ -12,7 +12,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import type { NoydbStore, EncryptedEnvelope, VaultSnapshot, Vault } from '@noy-db/hub'
 import { ConflictError, createNoydb } from '@noy-db/hub'
 import { ref } from '@noy-db/hub'
-import { sum, count } from '@noy-db/hub/aggregate'
+import { sum, count } from '@noy-db/hub/reduce'
 import { createLobby } from '../src/index.js'
 import type { VaultGroup, VaultRegistryRow } from '../src/index.js'
 
