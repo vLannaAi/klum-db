@@ -1,7 +1,7 @@
 /** Pure partial-reduce helpers (#8) — driven directly, no federation harness. */
 import { describe, it, expect } from 'vitest'
 import { reduceRecords } from '@noy-db/hub/cargo'
-import { sum, count, avg, min, max } from '@noy-db/hub/aggregate'
+import { sum, count, avg, min, max } from '@noy-db/hub/reduce'
 import { canPartialReduce, reduceToPartial, mergePartials, finalizePartial } from '../src/federation/partial-reduce.js'
 
 interface Rec extends Record<string, unknown> { amount: number }

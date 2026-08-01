@@ -10,7 +10,7 @@ import { createNoydb } from '@noy-db/hub'
 import { withTeam } from '@noy-db/hub/team'
 import type { Vault } from '@noy-db/hub'
 import type { VaultRegistryRow } from '../src/federation/index.js'
-import { sum, count, avg, min, max } from '@noy-db/hub/aggregate'
+import { sum, count, avg, min, max } from '@noy-db/hub/reduce'
 import { createLobby } from '../src/index.js'
 
 // ─── Shared in-memory adapter (copied from federation-vault-group.test.ts) ───
@@ -204,8 +204,8 @@ describe('ShardedQuery.live() — no-grant scoped access', () => {
     await opFirm.collection('invoices').put('a1', { clientId: 'acme', amount: 100, status: 'overdue' })
     await opFirm.collection('invoices').put('b1', { clientId: 'beta', amount: 200, status: 'overdue' })
     // Grant advisor only to firm-clients--acme and the state registry vault
-    await op.grant('firm-clients--acme', { userId: 'advisor', displayName: 'Adv', role: 'viewer', passphrase: 'adv-pass' })
-    await op.grant('state', { userId: 'advisor', displayName: 'Adv', role: 'viewer', passphrase: 'adv-pass' })
+    await op.grant('firm-clients--acme', { userId: 'advisor', displayName: 'Adv', role: 'viewer', secret: 'adv-pass' })
+    await op.grant('state', { userId: 'advisor', displayName: 'Adv', role: 'viewer', secret: 'adv-pass' })
 
     // Advisor opens the same group
     const adv = await createNoydb({ store: adapter, user: 'advisor', secret: 'adv-pass' })

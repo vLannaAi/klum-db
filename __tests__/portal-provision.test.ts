@@ -11,14 +11,14 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withTeam } from '@noy-db/hub/team'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import type { Vault } from '@noy-db/hub'
 import { createLobby, type VaultRegistryRow } from '../src/index.js'
 
 interface Invoice { clientId: string; amount: number }
 
 async function buildFleet() {
-  const adapter = memory()
+  const adapter = toMemory()
   const db = await createNoydb({ store: adapter, user: 'operator', secret: 'op-pass', teamStrategy: withTeam() })
   const lobby = createLobby(db)
   lobby.withVaultTemplate('client-template', {

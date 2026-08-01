@@ -6,14 +6,14 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import {
   walkCrossVaultClosure,
   extractCrossVaultPartition,
   describeCrossVaultExtraction,
   type CrossVaultRef,
 } from '../src/interchange/extract-cross-vault.js'
-import { adoptPartition, createOwnerOnAdoptedPartition } from '@noy-db/hub/bundle'
+import { adoptPartition, createOwnerOnAdoptedPartition } from '@noy-db/hub/cargo'
 // NDBM multivault manifest readers moved to klum in WS-1 — import from our own module,
 // not @noy-db/hub (which no longer ships them as of 0.2.0-pre.25).
 import { readNoydbBundleManifest, readMultiVaultBundleCompartment } from '../src/bundle/multi-bundle.js'
@@ -29,8 +29,8 @@ async function buildFixture(): Promise<{
   clientDb: Noydb
   openVault: (name: string) => ReturnType<Noydb['openVault']>
 }> {
-  const dirDb = await createNoydb({ store: memory(), user: 'admin', secret: 'dir-secret', cargoStrategy: withCargo() })
-  const clientDb = await createNoydb({ store: memory(), user: 'admin', secret: 'client-secret', cargoStrategy: withCargo() })
+  const dirDb = await createNoydb({ store: toMemory(), user: 'admin', secret: 'dir-secret', cargoStrategy: withCargo() })
+  const clientDb = await createNoydb({ store: toMemory(), user: 'admin', secret: 'client-secret', cargoStrategy: withCargo() })
 
   // --- directory vault ---
   const dirVault = await dirDb.openVault('directory')
@@ -162,7 +162,7 @@ describe('extractCrossVaultPartition', () => {
     const dirBytes = readMultiVaultBundleCompartment(res.bundle, dirEntry.handle)
 
     // adopt into a fresh in-memory store
-    const destStore = memory()
+    const destStore = toMemory()
     await adoptPartition(dirBytes, {
       transferKey: res.transferKeys['directory']!,
       destinationStore: destStore,
@@ -170,7 +170,7 @@ describe('extractCrossVaultPartition', () => {
     })
     await createOwnerOnAdoptedPartition(destStore, 'dir-adopted', {
       userId: 'u',
-      passphrase: 'correct-horse-battery-staple',
+      secret: 'correct-horse-battery-staple',
       transferKey: res.transferKeys['directory']!,
     })
 

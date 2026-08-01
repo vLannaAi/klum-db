@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import type { DecryptedRecord } from '@noy-db/hub/cargo'
 import { stageAndValidate, MigrationTransformRequiredError } from '../src/interchange/stage-records.js'
 
@@ -9,7 +9,7 @@ function rec(id: string, record: Record<string, unknown>): DecryptedRecord {
 }
 
 async function freshVault() {
-  const db = await createNoydb({ store: memory(), user: 'u', secret: 'secret-abc-123' })
+  const db = await createNoydb({ store: toMemory(), user: 'u', secret: 'secret-abc-123' })
   return db.openVault('v')
 }
 

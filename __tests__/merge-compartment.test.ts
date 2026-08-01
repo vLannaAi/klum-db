@@ -16,7 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { withCargo } from '@noy-db/hub/cargo'
 import { extractPartition } from '@noy-db/hub/cargo'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import { mergeCompartment } from '../src/interchange/merge-compartment.js'
 import { FieldAuthorityPolicyMissingError } from '../src/interchange/field-authority.js'
 
@@ -32,7 +32,7 @@ interface LegalEntity { id: string; juristicName: string; nickname: string }
  * bundleBytes + transferKey.
  */
 async function buildBundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+  const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source')
   const clients = source.collection<Client>('clients')
   await clients.put('c1', { id: 'c1', name: 'A' })
@@ -50,7 +50,7 @@ async function buildBundle() {
  * c4={name:'D'} (receiver-only). Returns the vault.
  */
 async function buildReceiver() {
-  const db = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+  const db = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
   const vault = await db.openVault('receiver')
   const clients = vault.collection<Client>('clients')
   // Write c1 (conflict) — the receiver already has a version of c1
@@ -122,7 +122,7 @@ describe('mergeCompartment — keep-local', () => {
 describe('mergeCompartment — lww-by-ts', () => {
   it('incoming newer → c1 overwritten (take-incoming wins)', async () => {
     // Build source vault AFTER receiver's c1 is written → incoming _ts is newer
-    const receiverDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const receiverDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const receiver = await receiverDb.openVault('receiver')
     const clients = receiver.collection<Client>('clients')
     // Write c1 to receiver FIRST
@@ -130,7 +130,7 @@ describe('mergeCompartment — lww-by-ts', () => {
     await clients.put('c4', { id: 'c4', name: 'D' })
 
     // Now build source (writes c1 AFTER receiver's c1 → incoming is newer)
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source')
     const srcClients = source.collection<Client>('clients')
     await srcClients.put('c1', { id: 'c1', name: 'A' })
@@ -160,7 +160,7 @@ describe('mergeCompartment — lww-by-ts', () => {
 
   it('incoming older than local → c1 skipped (local wins)', async () => {
     // Write receiver c1 AFTER building the incoming bundle → local _ts is newer
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source')
     const srcClients = source.collection<Client>('clients')
     await srcClients.put('c1', { id: 'c1', name: 'A' })
@@ -171,7 +171,7 @@ describe('mergeCompartment — lww-by-ts', () => {
     })
 
     // Build receiver c1 AFTER the source bundle → local _ts is strictly newer
-    const receiverDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const receiverDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const receiver = await receiverDb.openVault('receiver')
     const clients = receiver.collection<Client>('clients')
     await clients.put('c4', { id: 'c4', name: 'D' })
@@ -307,7 +307,7 @@ describe('mergeCompartment — per-collection strategy map', () => {
 describe('mergeCompartment — provenance preservation (FR-5)', () => {
   it('threads incoming _source through to receiver put when provenance:true', async () => {
     // Source vault: clients collection with provenance:true; c1 written with source:'firm-A'
-    const sourceDb = await createNoydb({ store: memory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src', secret: 'src-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source')
     const srcClients = source.collection<Client>('clients', { provenance: true })
     await srcClients.put('c1', { id: 'c1', name: 'A' }, { source: 'firm-A' })
@@ -318,7 +318,7 @@ describe('mergeCompartment — provenance preservation (FR-5)', () => {
     })
 
     // Receiver vault: clients collection with provenance:true (opt-in on receiver side)
-    const recvDb = await createNoydb({ store: memory(), user: 'recv', secret: 'recv-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv', secret: 'recv-secret-456' })
     const receiver = await recvDb.openVault('receiver')
     // Register the provenance-enabled collection on the receiver
     receiver.collection<Client>('clients', { provenance: true })
@@ -349,7 +349,7 @@ describe('mergeCompartment — provenance preservation (FR-5)', () => {
  * Returns { bundleBytes, transferKey }.
  */
 async function buildFr4Bundle() {
-  const sourceDb = await createNoydb({ store: memory(), user: 'src-fa', secret: 'src-fa-secret-123', cargoStrategy: withCargo() })
+  const sourceDb = await createNoydb({ store: toMemory(), user: 'src-fa', secret: 'src-fa-secret-123', cargoStrategy: withCargo() })
   const source = await sourceDb.openVault('source-fa')
   const clients = source.collection<LegalEntity>('clients', { provenance: true })
   await clients.put('c1', { id: 'c1', juristicName: 'New Co', nickname: 'theirNick' }, {
@@ -368,7 +368,7 @@ async function buildFr4Bundle() {
  * written with source:'principal-X', sourceTs:'2021-01-01T00:00:00.000Z'.
  */
 async function buildFr4Receiver() {
-  const db = await createNoydb({ store: memory(), user: 'recv-fa', secret: 'recv-fa-secret-456' })
+  const db = await createNoydb({ store: toMemory(), user: 'recv-fa', secret: 'recv-fa-secret-456' })
   const vault = await db.openVault('receiver-fa')
   const clients = vault.collection<LegalEntity>('clients', { provenance: true })
   await clients.put('c1', { id: 'c1', juristicName: 'Old Co', nickname: 'localNick' }, {
@@ -450,7 +450,7 @@ describe('mergeCompartment — field-authority (FR-4)', () => {
 describe('mergeCompartment — origin _sourceTs preservation (FR-4 Q2)', () => {
   it('take-incoming preserves the incoming origin _sourceTs (not merge time)', async () => {
     // incoming c1 written with {source:'firm-A', sourceTs:'2020-05-05T00:00:00.000Z'}
-    const sourceDb = await createNoydb({ store: memory(), user: 'src-sts', secret: 'src-sts-secret-123', cargoStrategy: withCargo() })
+    const sourceDb = await createNoydb({ store: toMemory(), user: 'src-sts', secret: 'src-sts-secret-123', cargoStrategy: withCargo() })
     const source = await sourceDb.openVault('source-sts')
     const srcClients = source.collection<Client>('clients', { provenance: true })
     await srcClients.put('c1', { id: 'c1', name: 'A-incoming' }, {
@@ -464,7 +464,7 @@ describe('mergeCompartment — origin _sourceTs preservation (FR-4 Q2)', () => {
     })
 
     // receiver has a divergent c1
-    const recvDb = await createNoydb({ store: memory(), user: 'recv-sts', secret: 'recv-sts-secret-456' })
+    const recvDb = await createNoydb({ store: toMemory(), user: 'recv-sts', secret: 'recv-sts-secret-456' })
     const receiver = await recvDb.openVault('receiver-sts')
     const recvClients = receiver.collection<Client>('clients', { provenance: true })
     await recvClients.put('c1', { id: 'c1', name: 'A-local' }, { source: 'local-source' })

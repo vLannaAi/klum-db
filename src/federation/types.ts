@@ -10,7 +10,7 @@ import type { Vault } from '@noy-db/hub/cargo'
 import type { Collection } from '@noy-db/hub/cargo'
 import type { Operator, RetrieveHit } from '@noy-db/hub/cargo'
 import type { LiveQuery } from '@noy-db/hub/cargo'
-import type { LiveAggregation, AggregateResult, AggregateSpec } from '@noy-db/hub/cargo'
+import type { LiveReduction, ReduceResult, ReduceSpec } from '@noy-db/hub/cargo'
 import type { IndexDef } from '@noy-db/hub/cargo'
 import type { VaultMeta } from '@noy-db/hub/cargo'
 
@@ -187,8 +187,8 @@ export interface LiveQueryOptions extends FanoutQueryOptions {
 }
 
 /** A grouped aggregate output row: the grouped field + the reduced spec result. */
-export type GroupedRow<F extends string, Spec extends AggregateSpec> =
-  { readonly [K in F]: unknown } & AggregateResult<Spec>
+export type GroupedRow<F extends string, Spec extends ReduceSpec> =
+  { readonly [K in F]: unknown } & ReduceResult<Spec>
 
 /** Reactive cross-shard record (or grouped-row) query — array-shaped, mirrors LiveQuery<T>. */
 export interface CrossVaultLiveQuery<T> extends LiveQuery<T> {
@@ -196,8 +196,8 @@ export interface CrossVaultLiveQuery<T> extends LiveQuery<T> {
   readonly ready: Promise<void>
 }
 
-/** Reactive cross-shard scalar aggregate — mirrors LiveAggregation<R>. */
-export interface CrossVaultLiveAggregation<R> extends LiveAggregation<R> {
+/** Reactive cross-shard scalar aggregate — mirrors LiveReduction<R>. */
+export interface CrossVaultLiveAggregation<R> extends LiveReduction<R> {
   readonly skippedVaults: readonly SkippedVault[]
   readonly ready: Promise<void>
 }

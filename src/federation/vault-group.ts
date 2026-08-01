@@ -20,7 +20,7 @@ import { InsightAutoPush } from './insight-auto-push.js'
 import { CrossVaultAggregation, CrossVaultGroupedAggregation } from './aggregate-across.js'
 import type { FanoutRecordSource, LiveBinding } from './aggregate-across.js'
 import { retrieveAcross } from './retrieve-across.js'
-import type { AggregateSpec } from '@noy-db/hub/cargo'
+import type { ReduceSpec } from '@noy-db/hub/cargo'
 import { reduceToPartial } from './partial-reduce.js'
 import type { PartialState } from './partial-reduce.js'
 import type {
@@ -668,7 +668,7 @@ export class ShardedQuery<T, R = T> {
    * `.aggregate()` path calls this, and that path rejects join legs upstream.
    */
   async fanoutReduce(
-    spec: AggregateSpec,
+    spec: ReduceSpec,
     options: FanoutQueryOptions = {},
   ): Promise<{ partials: PartialState[]; skippedVaults: SkippedVault[] }> {
     const { eligible, skipped } = await this.group.resolveEligible(options)
@@ -759,7 +759,7 @@ export class ShardedQuery<T, R = T> {
   }
 
   /** One-shot distributed aggregate — central reduce over all shard records. */
-  aggregate<Spec extends AggregateSpec>(spec: Spec): CrossVaultAggregation<R, Spec> {
+  aggregate<Spec extends ReduceSpec>(spec: Spec): CrossVaultAggregation<R, Spec> {
     return new CrossVaultAggregation<R, Spec>(this.aggregateSource(), spec, this.liveBinding())
   }
 
@@ -776,7 +776,7 @@ export class ShardedGroupedQuery<T, R, F extends string> {
     private readonly field: F,
   ) {}
 
-  aggregate<Spec extends AggregateSpec>(spec: Spec): CrossVaultGroupedAggregation<R, F, Spec> {
+  aggregate<Spec extends ReduceSpec>(spec: Spec): CrossVaultGroupedAggregation<R, F, Spec> {
     return new CrossVaultGroupedAggregation<R, F, Spec>(
       this.query.aggregateSource(),
       this.field,

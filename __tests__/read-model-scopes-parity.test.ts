@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
-import { memory } from '@noy-db/to-memory'
+import { toMemory } from '@noy-db/to-memory'
 import type { Vault } from '@noy-db/hub'
 import { createLobby, type VaultRegistryRow } from '../src/index.js'
 
@@ -27,7 +27,7 @@ const BILLS: Bill[] = [
 ]
 
 async function buildFleet() {
-  const adapter = memory()
+  const adapter = toMemory()
   const db = await createNoydb({ store: adapter, user: 'operator', secret: 'op-pass' })
   const lobby = createLobby(db)
   lobby.withVaultTemplate('client-template', {
@@ -118,7 +118,7 @@ describe('ReadModel scoped audiences — S4 (#44/#58)', () => {
 describe('ReadModel parity harness — S4 (#44/#58, spec § 7)', () => {
   it('federated read-model equals the monolith computation row-for-row', async () => {
     // ── monolith: one vault, one collection, computed directly ────────────
-    const mono = await createNoydb({ store: memory(), user: 'op', secret: 'op-pass' })
+    const mono = await createNoydb({ store: toMemory(), user: 'op', secret: 'op-pass' })
     const monoVault = await mono.openVault('books')
     const monoBills = monoVault.collection<Bill>('bills')
     for (const b of BILLS) await monoBills.put(b.id, b)
