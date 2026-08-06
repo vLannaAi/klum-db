@@ -137,9 +137,9 @@ The client holds an **inalienable, sealed, hidden owner** (the **Deed**) from da
 import { createDeedOwner } from '@klum-db/lobby'              // re-exported from @noy-db/hub
 
 await createDeedOwner(store, 'acme', 'client-acme', clientSealingProvider)   // latent owner, never authenticates
-await db.grantCustodian('acme', { userId: 'firm', displayName: 'Firm', passphrase: '…' })
+await db.grantCustodian('acme', { userId: 'firm', displayName: 'Firm', secret: '…' })
 //  firm now operates fully — but grant / revoke / rotate / extract-and-sever all throw for a custodian
-await vault.custody.liberate({ newOwnerId: 'firm-owner', newOwnerPassphrase: '…', legalBasis: 'contractual-handover' })
+await vault.custody.liberate({ newOwnerId: 'firm-owner', newOwnerSecret: '…', legalBasis: 'contractual-handover' })
 ```
 
 ### 4 · Surface — sync only an agreed slice (FR-7)

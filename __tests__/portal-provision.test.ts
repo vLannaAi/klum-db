@@ -94,7 +94,7 @@ describe('Lobby.provisionPortal (#42)', () => {
     await lobby.provisionPortal(group, {
       client: 'acme',
       invite: { userId: 'client-acme', displayName: 'Acme Portal' },
-      firmGrants: [{ userId: 'firm-custodian', displayName: 'Firm', role: 'admin', passphrase: 'firm-pass' }],
+      firmGrants: [{ userId: 'firm-custodian', displayName: 'Firm', role: 'admin', secret: 'firm-pass' }],
     })
 
     const custodian = await createNoydb({ store: adapter, user: 'firm-custodian', secret: 'firm-pass' })
