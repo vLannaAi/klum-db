@@ -18,7 +18,7 @@
  *
  * The registry audit trail stores only safe fields (tokenId, userId,
  * kind, timestamps) — NEVER the encoded invite, which carries the
- * single-use temp passphrase.
+ * single-use temp secret.
  *
  * OIDC device-entry revocation (`revokeOidcDevice`) is deliberately
  * NOT wrapped here: it requires the OIDC provider config and a live
@@ -34,7 +34,7 @@ export interface PortalFirmGrant {
   readonly userId: string
   readonly displayName: string
   readonly role: Role
-  readonly passphrase: string
+  readonly secret: string
 }
 
 /** Options for {@link provisionPortal}. */
@@ -102,7 +102,7 @@ export async function provisionPortal<T>(
 
   for (const g of opts.firmGrants ?? []) {
     await db.grant(vaultId, {
-      userId: g.userId, displayName: g.displayName, role: g.role, secret: g.passphrase,
+      userId: g.userId, displayName: g.displayName, role: g.role, secret: g.secret,
     })
   }
 
