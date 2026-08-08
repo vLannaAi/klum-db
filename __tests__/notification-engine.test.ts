@@ -2,7 +2,7 @@
  * Notifications rule engine (#37) — integration against a real hub instance.
  * Proves the /cargo onAfterWrite seam wiring, not the matching logic.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createNoydb } from '@noy-db/hub'
 import { memoryStore } from './helpers/two-shard-group.js'
 import { NotificationRuleEngine } from '../src/notifications/rule-engine.js'
@@ -115,6 +115,40 @@ describe('NotificationRuleEngine.attach (#37)', () => {
     await clients.put('c1', { id: 'c1', riskRating: 'low' })
     await clients.put('c1', { id: 'c1', riskRating: 'high' })    // does not throw/reject
     expect(await clients.get('c1')).toMatchObject({ riskRating: 'high' })
+    off()
+  })
+
+  it('is best-effort: a throwing rule match AND a throwing onError together do NOT fail the write', async () => {
+    const db = await createNoydb({ store: memoryStore(), user: 'u_ada', secret: 'op-pass' })
+    const vault = await db.openVault('clients-vault')
+    const clients = vault.collection<Client>('clients')
+    // Matches unconditionally (collection: 'clients', no ops/when constraint),
+    // then throws while evaluate() reads `recipients` — a match-phase throw.
+    const badRule = {
+      id: 'bad', collection: 'clients', get recipients(): never { throw new Error('boom') },
+    } as unknown as NotificationRule
+    const engine = new NotificationRuleEngine({
+      rules: [badRule],
+      sink: () => {},
+      onError: () => { throw new Error('onError down too') },
+    })
+    const off = engine.attach(db)
+
+    // The hub's own `runAfter` also catches a rejected after-hook and just
+    // `console.warn`s (see @noy-db/hub's WriteHookRegistry), so "the write
+    // resolves" alone would pass even with an unguarded attach() — it would
+    // just be leaning on the hub's fallback net instead of containing the
+    // failure itself. Spy on console.warn to prove the failure never
+    // escapes `attach()`'s own hook at all: if it did, the hub's fallback
+    // path would log "[noy-db] onAfterWrite handler failed ...".
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await clients.put('c1', { id: 'c1', riskRating: 'low' })    // does not throw/reject
+      expect(await clients.get('c1')).toMatchObject({ riskRating: 'low' })
+      expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('onAfterWrite handler failed'))
+    } finally {
+      warnSpy.mockRestore()
+    }
     off()
   })
 })

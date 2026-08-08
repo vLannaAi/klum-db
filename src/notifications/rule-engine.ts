@@ -116,17 +116,21 @@ export class NotificationRuleEngine {
   attach(db: Noydb, opts: { roster?: Roster } = {}): Unsubscribe {
     const roster = opts.roster ?? {}
     return db.onAfterWrite(async (event) => {
-      for (const intent of this.evaluate(event, roster)) {
-        try {
-          await this.sink(intent)
-        } catch (err) {
-          // A throwing onError must not escape into the write path either.
+      // The whole body is guarded: `evaluate` itself can throw (a rule's
+      // match phase can throw, and its `onError` report can itself throw —
+      // see the per-rule catch in `evaluate`), and the sink's `onError`
+      // report below can throw too. NOTHING from this hook may ever reject
+      // and propagate into the hub's write path — best-effort, always.
+      try {
+        for (const intent of this.evaluate(event, roster)) {
           try {
+            await this.sink(intent)
+          } catch (err) {
             this.onError(err, { phase: 'sink', ruleId: intent.ruleId })
-          } catch {
-            // swallow — best-effort delivery, never fail the caller's write
           }
         }
+      } catch {
+        // swallow — best-effort delivery, never fail the caller's write
       }
     })
   }
