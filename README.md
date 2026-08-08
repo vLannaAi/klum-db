@@ -157,6 +157,37 @@ await lobby.applySurface('tax-vault', surface, bundleBytes, transferKey)
 
 A foreign, non-noy-db unit (a legacy DB, a raw export) can't be federated directly — the sovereign tier needs a vault's keyring and per-record keys. **Dock** carries it read-only at a lower tier; **`graduate()`** imports it into a fresh sovereign vault, unlocking the full tier (custody, provenance, field-Authority merge). It's the one move that *adds a node to the data plane* rather than coordinating existing ones.
 
+### Notifications — rule engine (#37)
+
+Rules evaluate **in the session that performs the write**, over the
+`@noy-db/hub/cargo` `onAfterWrite` seam, and emit reference-only intents
+to a sink you supply. The Lobby never opens the notifications vault and
+never decrypts a notification.
+
+```ts
+import { NotificationRuleEngine } from '@klum-db/lobby'
+
+const engine = new NotificationRuleEngine({
+  rules: [{
+    id: 'risk-escalation',
+    collection: 'clients',
+    ops: ['update'],
+    actorRoles: ['advisor'],
+    when: [{ field: 'riskRating', from: 'low', to: 'high' }],
+    recipients: { kind: 'vaultOwner' },
+  }],
+  sink: async (intent) => { /* #38 persists this */ },
+})
+
+const off = engine.attach(db, {
+  roster: { roles: { u_ada: 'advisor' }, vaultOwner: { shard_x: 'u_ben' } },
+})
+```
+
+A rule is plain JSON, so it can be stored fleet-visible as config. An
+intent carries **references only** — never field values, diffs, or
+snapshots (see `docs/notifications-cross-actor.md` § 4).
+
 ---
 
 ## Relationship with noy-db

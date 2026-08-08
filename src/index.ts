@@ -454,3 +454,20 @@ export type {
   SurfaceStatus,
   SurfaceConflictPolicy,
 } from './federation/types.js'
+
+// ─── #37: Notifications rule engine (actor-side) ──────────────────────────────
+export { NotificationRuleEngine } from './notifications/index.js'
+export type {
+  RuleEngineOptions,
+  ErrorContext,
+  WriteEvent,
+  WriteOp,
+  Severity,
+  FieldCondition,
+  RecipientSpec,
+  NotificationRule,
+  Roster,
+  NotificationRef,
+  NotificationIntent,
+  NotificationSink,
+} from './notifications/index.js'
