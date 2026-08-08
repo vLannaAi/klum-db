@@ -1,5 +1,6 @@
 /**
- * @klum-db/lobby notifications (#37) — actor-side rule engine.
+ * @klum-db/lobby notifications (#37 + #38) — actor-side rule engine and
+ * in-app delivery (sink + inbox).
  *
  * @module
  */

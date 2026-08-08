@@ -7,12 +7,13 @@ import { createNoydb } from '@noy-db/hub'
 import { STATE_VAULT_NAME } from '@noy-db/hub/cargo'
 import { memoryStore } from './helpers/two-shard-group.js'
 import { createLobby } from '../src/index.js'
+import { NotificationRuleEngine } from '../src/notifications/rule-engine.js'
 import {
   NOTIFICATIONS_REGISTRY_COLLECTION,
   notificationsVaultName,
 } from '../src/notifications/record.js'
 import type { NotificationsRegistryRow } from '../src/notifications/record.js'
-import type { NotificationIntent } from '../src/notifications/types.js'
+import type { NotificationIntent, NotificationRule } from '../src/notifications/types.js'
 
 const INTENT: NotificationIntent = {
   ruleId: 'risk-escalation',
@@ -103,6 +104,33 @@ describe('openNotifications (#38)', () => {
     await sink(INTENT)
     await sink(INTENT)
     expect(await inbox.list({ recipient: 'u_ben', now: 2_000 })).toHaveLength(1)
+  })
+
+  it('end-to-end with #37: engine.attach -> real write -> record readable in the inbox', async () => {
+    interface Client extends Record<string, unknown> { id: string; riskRating: string }
+
+    const h = await harness()
+    const { sink, inbox } = await h.lobby.openNotifications(h.group, { now: () => 1_000 })
+
+    const rule: NotificationRule = {
+      id: 'risk-escalation',
+      collection: 'clients',
+      ops: ['update'],
+      when: [{ field: 'riskRating', from: 'low', to: 'high' }],
+      recipients: { kind: 'actors', ids: ['u_ben'] },
+    }
+    const engine = new NotificationRuleEngine({ rules: [rule], sink })
+    const off = engine.attach(h.db, { roster: {} })
+
+    const vault = await h.db.openVault('clients-vault')
+    const clients = vault.collection<Client>('clients')
+    await clients.put('c1', { id: 'c1', riskRating: 'low' })
+    await clients.put('c1', { id: 'c1', riskRating: 'high' })
+    off()
+
+    const got = await inbox.list({ recipient: 'u_ben', now: 2_000 })
+    expect(got).toHaveLength(1)
+    expect(got[0]!.ref.recordId).toBe('c1')
   })
 
   it('expires a record once defaultTtlMs has elapsed', async () => {

@@ -19,11 +19,18 @@ export interface NotificationWriter {
 export interface SinkOptions {
   /** When set, each record gets `expiresAt = createdAt + defaultTtlMs`. */
   defaultTtlMs?: number
-  /** Injectable clock — tests pass a fixed one. */
+  /** Injectable clock (a function) — tests pass a fixed one. */
   now?: () => number
 }
 
-/** Build a sink that persists intents as per-recipient notification records. */
+/**
+ * Build a sink that persists intents as per-recipient notification records.
+ *
+ * This sink writes into the SAME hub the #37 engine is attached to — it does
+ * not recurse only because the hub's `WriteHookRegistry` suppresses nested
+ * `onAfterWrite` firing for writes made from inside a hook. A rule matching
+ * `collection: 'notifications'` would otherwise fan out into itself forever.
+ */
 export function createNotificationSink(
   writer: NotificationWriter,
   opts: SinkOptions = {},
@@ -31,6 +38,12 @@ export function createNotificationSink(
   const clock = opts.now ?? (() => Date.now())
   return async (intent: NotificationIntent): Promise<void> => {
     const createdAt = clock()
+    // Each recipient's write is guarded so one failure does not abort the
+    // rest of the fan-out. Record ids are deterministic (deriveNotificationId),
+    // so re-delivering the whole intent after a partial failure is safe and
+    // idempotent — recipients that already succeeded just get overwritten
+    // with the same record.
+    const failures: Array<{ recipient: string; err: unknown }> = []
     for (const recipient of intent.recipients) {
       const id = await deriveNotificationId(intent.ruleId, intent.ref, recipient)
       const record: NotificationRecord = {
@@ -46,7 +59,19 @@ export function createNotificationSink(
         ...(intent.severity !== undefined ? { severity: intent.severity } : {}),
         ...(opts.defaultTtlMs !== undefined ? { expiresAt: createdAt + opts.defaultTtlMs } : {}),
       }
-      await writer.put(id, record)
+      try {
+        await writer.put(id, record)
+      } catch (err) {
+        failures.push({ recipient, err })
+      }
+    }
+    if (failures.length > 0) {
+      const { vaultId, collection, recordId, version } = intent.ref
+      throw new Error(
+        `notification delivery failed for ${failures.length}/${intent.recipients.length} recipient(s) `
+        + `(rule "${intent.ruleId}", ref ${vaultId}/${collection}/${recordId}@${version}): `
+        + failures.map((f) => `${f.recipient}: ${String(f.err instanceof Error ? f.err.message : f.err)}`).join('; '),
+      )
     }
   }
 }

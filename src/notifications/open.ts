@@ -35,7 +35,7 @@ export interface NotificationsGroupRef {
 export interface OpenNotificationsOptions {
   /** When set, each written record expires this many ms after creation. */
   defaultTtlMs?: number
-  /** Injectable clock — tests pass a fixed one. */
+  /** Injectable clock (a function) — tests pass a fixed one. */
   now?: () => number
 }
 

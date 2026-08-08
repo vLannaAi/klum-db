@@ -151,4 +151,18 @@ describe('createNotificationSink', () => {
     expect(json).not.toContain('low')
     expect(json).not.toContain('high')
   })
+
+  it('does not abort the remaining recipients when one write fails', async () => {
+    const written: Array<{ id: string; record: NotificationRecord }> = []
+    const writer = {
+      put: async (id: string, record: NotificationRecord) => {
+        if (record.recipient === 'u_ben') throw new Error('write down')
+        written.push({ id, record })
+      },
+    }
+    const sink = createNotificationSink(writer, { now: () => 1_700_000_000_000 })
+    await expect(sink(INTENT)).rejects.toThrow(/1\/2 recipient/)
+    expect(written).toHaveLength(1)
+    expect(written[0]!.record.recipient).toBe('u_cy')
+  })
 })

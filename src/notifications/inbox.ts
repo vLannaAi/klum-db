@@ -22,7 +22,7 @@ export interface ListOptions {
   recipient: string
   /** Include records the recipient already dismissed. Default false. */
   includeDismissed?: boolean
-  /** Injectable clock for the expiry filter. Defaults to `Date.now()`. */
+  /** Fixed instant (ms) to filter expiry against. Defaults to `Date.now()`. */
   now?: number
 }
 
@@ -49,7 +49,13 @@ export class NotificationInbox {
     return list.length
   }
 
-  /** Stamp `dismissedAt`. Idempotent: an already-dismissed record keeps its first timestamp. */
+  /**
+   * Stamp `dismissedAt`. Idempotent: an already-dismissed record keeps its first timestamp.
+   * Performs NO ownership check — any caller holding this handle can dismiss any recipient's
+   * record by id. A grant on the vault is write access anyway, so enforcing ownership here
+   * would not add real protection; callers relying on per-recipient isolation must not expose
+   * this handle beyond the recipient's own session.
+   */
   async dismiss(id: string, opts: { at?: number } = {}): Promise<void> {
     const existing = await this.store.get(id)
     if (existing === null) throw new Error(`notification "${id}" not found.`)
