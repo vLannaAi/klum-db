@@ -46,9 +46,11 @@ describe('deriveNotificationId', () => {
   })
 
   it('does not collide when components are shifted across the delimiter', async () => {
-    // 'a|b' vs 'a' + 'b' must not hash the same — guards a naive concat.
-    const a = await deriveNotificationId('r', { ...REF, collection: 'x|y' }, 'u_ben')
-    const b = await deriveNotificationId('r', { ...REF, collection: 'x' }, 'y|u_ben')
+    // 'collection' and 'recordId' are adjacent in the joined tuple, so shifting
+    // the '|' between them is a real naive-concat collision: 'a|b' + 'c' vs
+    // 'a' + 'b|c' must not hash the same — guards a naive concat.
+    const a = await deriveNotificationId('r', { ...REF, collection: 'a|b', recordId: 'c' }, 'u_ben')
+    const b = await deriveNotificationId('r', { ...REF, collection: 'a', recordId: 'b|c' }, 'u_ben')
     expect(a).not.toBe(b)
   })
 })
