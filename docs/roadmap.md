@@ -13,8 +13,15 @@ Also shipped: **in-app delivery** (#38) — `lobby.openNotifications(group)` ens
 per-fleet notifications vault, returning a fan-out `sink` (one record per recipient, reference-only)
 for a #37 rule engine, plus a recipient-facing `inbox` (`list`/`dismiss`) with read-time `expiresAt`
 filtering and no sweeper. Per-recipient records converge under ordinary last-write-wins — no CRDT
-strategy needed. Does not grant read access; callers grant on the returned `vaultId`. **Next slice:
-#39 (push transport)** — a content-free wake-up that tells a device to fetch from the inbox.
+strategy needed. Does not grant read access; callers grant on the returned `vaultId`.
+
+Also shipped: **push wake-up** (#39) — `openNotifications`'s `devices` facade (`DeviceRegistry`:
+`register`/`list`/`listAll`/`unregister`) persists device registrations in a `devices` collection
+inside the notifications vault, and an optional `wakeSender` option wraps the delivery sink so it
+wakes a recipient's registered endpoints after a record is written. Content-free by construction —
+`WakeSender.wake` takes no payload parameter — and this package ships no sender implementation
+(no APNs/FCM/VAPID code, no credentials); push is an optimization only, never a delivery mechanism,
+since records are written before any wake is attempted. **Milestone 4 (#37 → #38 → #39) is complete.**
 
 ---
 

@@ -217,6 +217,43 @@ caller-supplied `registry` collection living in a different vault
 different vaults; that's deliberate, since the notifications vault is
 never a shard.
 
+### Notifications — push wake-up (#39)
+
+Push wake-up (#39) is **content-free by design**. APNs, FCM and Web Push all
+require a server that sees the payload, so a push here carries no
+notification content at all — the client wakes, syncs, decrypts locally, and
+renders from its own data.
+
+```ts
+const { sink, inbox, devices } = await lobby.openNotifications(group, { wakeSender })
+
+await devices.register({ actor: 'u_ben', kind: 'web-push', token: '…' })
+```
+
+`WakeSender` is implemented by **your** server; this package ships no APNs,
+FCM or VAPID code and holds no credentials:
+
+```ts
+interface WakeSender {
+  wake(endpoints: readonly DeviceEndpoint[]): Promise<WakeResult>
+}
+```
+
+`wake` takes no payload parameter — content in a push is unrepresentable,
+not merely discouraged. Rich push is incompatible with the product's core
+claim: a body naming an actor and a client would leak to the push service
+and to any lock screen exactly what the vault protects.
+
+**Push is an optimization, never a delivery mechanism.** Records are written
+before any wake is attempted, so a sender outage cannot cost a notification
+— a client that misses a wake sees it on the next sync.
+
+**Known limitation — traffic analysis.** An empty payload does not hide
+*timing and frequency*: a push service can observe that someone was woken,
+and when. Mitigation (padding, batching, jitter) is a property of when sends
+happen, which your `WakeSender` controls and this package does not — so
+implement it there if your deployment needs it.
+
 ---
 
 ## Relationship with noy-db
