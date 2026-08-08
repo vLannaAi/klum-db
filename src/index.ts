@@ -61,6 +61,11 @@ import type {
 // ─── Read-model imports (#44 S1, used in Lobby method signatures) ─────────────
 import type { OpenReadModelOptions, ReadModel } from './federation/read-model.js'
 
+// ─── Notifications imports (#38, used in Lobby method signatures) ─────────────
+import type {
+  NotificationsGroupRef, OpenNotificationsOptions, NotificationsHandle,
+} from './notifications/open.js'
+
 // ─── Dock imports (lower tier read-only units) ────────────────────────────────
 import { DockedUnit } from './dock/docked-unit.js'
 import type { UnitDriver } from './dock/unit-driver.js'
@@ -205,6 +210,25 @@ export class Lobby {
   ): Promise<ReadModel<T>> {
     const { openReadModel: openReadModelFn } = await import('./federation/read-model.js')
     return openReadModelFn(group, opts)
+  }
+
+  // ─── Notifications (#38) ───────────────────────────────────────────────────
+
+  /**
+   * Open the per-fleet notifications vault (#38): ensures it exists,
+   * registers it, and returns the sink to hand a #37 rule engine plus the
+   * recipient-facing inbox.
+   *
+   * Does NOT grant read access — use `vaultId` to grant explicitly.
+   *
+   * Delegates to `openNotifications` in `notifications/open.js`.
+   */
+  async openNotifications(
+    group: NotificationsGroupRef,
+    opts: OpenNotificationsOptions = {},
+  ): Promise<NotificationsHandle> {
+    const { openNotifications: openNotificationsFn } = await import('./notifications/open.js')
+    return openNotificationsFn(group, opts)
   }
 
   // ─── FR-7 Surface API ─────────────────────────────────────────────────────
@@ -470,4 +494,13 @@ export type {
   NotificationRef,
   NotificationIntent,
   NotificationSink,
+} from './notifications/index.js'
+
+// ─── #38: Notifications delivery (in-app inbox) ────────────────────────────────
+export { NotificationInbox } from './notifications/index.js'
+export type {
+  NotificationRecord,
+  NotificationsHandle,
+  OpenNotificationsOptions,
+  NotificationsGroupRef,
 } from './notifications/index.js'

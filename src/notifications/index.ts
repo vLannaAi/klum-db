@@ -1,5 +1,6 @@
 /**
- * @klum-db/lobby notifications (#37) — actor-side rule engine.
+ * @klum-db/lobby notifications (#37 + #38) — actor-side rule engine and
+ * in-app delivery (sink + inbox).
  *
  * @module
  */
@@ -18,3 +19,14 @@ export type {
   NotificationIntent,
   NotificationSink,
 } from './types.js'
+export { openNotifications } from './open.js'
+export type { NotificationsGroupRef, OpenNotificationsOptions, NotificationsHandle } from './open.js'
+export { createNotificationSink } from './delivery.js'
+export type { NotificationWriter, SinkOptions } from './delivery.js'
+export { NotificationInbox } from './inbox.js'
+export type { InboxStore, ListOptions } from './inbox.js'
+export {
+  NOTIFICATIONS_COLLECTION, NOTIFICATIONS_REGISTRY_COLLECTION,
+  notificationsVaultName, deriveNotificationId,
+} from './record.js'
+export type { NotificationRecord, NotificationsRegistryRow } from './record.js'
