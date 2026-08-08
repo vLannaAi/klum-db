@@ -8,7 +8,7 @@
  *
  * @module
  */
-import type { WriteHook } from '@noy-db/hub/cargo'
+import type { Noydb, Unsubscribe, WriteHook } from '@noy-db/hub/cargo'
 import { matchesRule, resolveRecipients } from './match.js'
 import type {
   NotificationIntent,
@@ -103,5 +103,31 @@ export class NotificationRuleEngine {
     }
 
     return intents
+  }
+
+  /**
+   * Register on the caller's own hub. Rules evaluate in the session that
+   * performs the write (spec § 0), so `before` and `after` are already
+   * decrypted and no extra reads are needed.
+   *
+   * `onAfterWrite` only — a before-hook throw aborts the write, and a
+   * notification must never be able to block a business write.
+   */
+  attach(db: Noydb, opts: { roster?: Roster } = {}): Unsubscribe {
+    const roster = opts.roster ?? {}
+    return db.onAfterWrite(async (event) => {
+      for (const intent of this.evaluate(event, roster)) {
+        try {
+          await this.sink(intent)
+        } catch (err) {
+          // A throwing onError must not escape into the write path either.
+          try {
+            this.onError(err, { phase: 'sink', ruleId: intent.ruleId })
+          } catch {
+            // swallow — best-effort delivery, never fail the caller's write
+          }
+        }
+      }
+    })
   }
 }

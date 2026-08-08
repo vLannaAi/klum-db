@@ -162,10 +162,11 @@ import type { WriteEvent } from '../src/notifications/rule-engine.js'
 import type { NotificationIntent } from '../src/notifications/types.js'
 
 /**
- * A WriteEvent-shaped literal. Typed as WriteEvent so `pnpm typecheck`
- * verifies the fixture against the real hub shape — if noy-db adds a
- * required field, this fixture fails to compile rather than silently
- * drifting.
+ * A WriteEvent-shaped literal. Typed as WriteEvent for editor/authoring
+ * accuracy (autocomplete, inline type errors) — NOT compiler-verified:
+ * `tsconfig.json` includes only `src`, and `pnpm lint` runs `eslint src/`
+ * only, so nothing in `__tests__/` is typechecked and this fixture could
+ * silently drift from the real hub shape.
  */
 function writeEvent(over: Partial<WriteEvent> = {}): WriteEvent {
   return {
@@ -223,7 +224,9 @@ describe('NotificationRuleEngine.evaluate', () => {
 
   it('never leaks matched field values into the intent (payload minimization, spec § 4)', () => {
     const engine = new NotificationRuleEngine({ rules: [RISK_RULE], sink: () => {} })
-    const json = JSON.stringify(engine.evaluate(writeEvent(), ROSTER))
+    const intents = engine.evaluate(writeEvent(), ROSTER)
+    expect(intents).toHaveLength(1)
+    const json = JSON.stringify(intents)
     expect(json).not.toContain('low')
     expect(json).not.toContain('high')
     expect(json).not.toContain('riskRating')
