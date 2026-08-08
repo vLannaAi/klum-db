@@ -7,7 +7,7 @@
  * @module
  */
 import { readPath } from '@noy-db/hub/cargo'
-import type { FieldCondition } from './types.js'
+import type { FieldCondition, NotificationRule, RecipientSpec, Roster, WriteOp } from './types.js'
 
 /**
  * Structural deep equality. `Object.is` for primitives; recursive
@@ -44,4 +44,46 @@ export function matchesCondition(cond: FieldCondition, before: unknown, after: u
   if ('to' in cond && !deepEqual(next, cond.to)) return false
   if ('equals' in cond && !deepEqual(next, cond.equals)) return false
   return true
+}
+
+export interface RuleMatchContext {
+  vaultId: string
+  collection: string
+  op: WriteOp
+  /** Resolved from the roster; `undefined` when the roster does not know the actor. */
+  actorRole?: string
+  before: unknown
+  after: unknown
+}
+
+/** Does this rule fire for this write? Every axis ANDs. */
+export function matchesRule(rule: NotificationRule, ctx: RuleMatchContext): boolean {
+  if (rule.collection !== ctx.collection) return false
+  if (rule.ops && !rule.ops.includes(ctx.op)) return false
+  if (rule.vaults && !rule.vaults.includes(ctx.vaultId)) return false
+  // A rule constraining roles cannot match an actor the roster does not know.
+  if (rule.actorRoles && (ctx.actorRole === undefined || !rule.actorRoles.includes(ctx.actorRole))) return false
+  if (rule.when && !rule.when.every((c) => matchesCondition(c, ctx.before, ctx.after))) return false
+  return true
+}
+
+/** Pure roster lookup. Returns `[]` when the roster cannot answer. */
+export function resolveRecipients(
+  spec: RecipientSpec,
+  ctx: { vaultId: string; roster: Roster },
+): string[] {
+  switch (spec.kind) {
+    case 'actors':
+      return [...spec.ids]
+    case 'vaultOwner': {
+      const owner = ctx.roster.vaultOwner?.[ctx.vaultId]
+      return owner ? [owner] : []
+    }
+    case 'assignees':
+      return [...(ctx.roster.assignees?.[ctx.vaultId] ?? [])]
+    case 'role': {
+      const roles = ctx.roster.roles ?? {}
+      return Object.keys(roles).filter((id) => roles[id] === spec.role)
+    }
+  }
 }
