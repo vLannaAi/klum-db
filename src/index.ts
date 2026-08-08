@@ -504,3 +504,15 @@ export type {
   OpenNotificationsOptions,
   NotificationsGroupRef,
 } from './notifications/index.js'
+
+// ─── #39: Notifications push wake-up (content-free) ────────────────────────────
+export { DeviceRegistry } from './notifications/index.js'
+export type {
+  DeviceKind,
+  DeviceEndpoint,
+  DeviceRegistration,
+  RegisterDeviceInput,
+  WakeSender,
+  WakeResult,
+  WakeFailure,
+} from './notifications/index.js'

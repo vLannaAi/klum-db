@@ -12,7 +12,6 @@ function fakeStore(seed: DeviceRegistration[] = []) {
     hydrated: 0,
     async list() { this.hydrated++; return [...rows.keys()] },
     query() { return { toArray: () => [...rows.values()] } },
-    async get(id: string) { return rows.get(id) ?? null },
     async put(id: string, r: DeviceRegistration) { rows.set(id, r) },
     async delete(id: string) { rows.delete(id) },
   }

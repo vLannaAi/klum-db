@@ -30,3 +30,9 @@ export {
   notificationsVaultName, deriveNotificationId,
 } from './record.js'
 export type { NotificationRecord, NotificationsRegistryRow } from './record.js'
+export { DeviceRegistry, deriveEndpointId, DEVICES_COLLECTION } from './devices.js'
+export type {
+  DeviceKind, DeviceEndpoint, DeviceRegistration, RegisterDeviceInput, DeviceStore,
+} from './devices.js'
+export { withWake } from './wake.js'
+export type { WakeSender, WakeResult, WakeFailure, WithWakeOptions } from './wake.js'

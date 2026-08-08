@@ -58,10 +58,20 @@ describe('openNotifications + push wake (#39)', () => {
   })
 
   it('with no wakeSender configured, delivery works and nothing is woken', async () => {
+    // A registered recipient device is in place so a would-be wake attempt
+    // has something to act on. If `openNotifications` always wrapped the
+    // sink with `withWake` regardless of `opts.wakeSender`, the wake path
+    // would try to call `.wake` on the missing sender, throw, and land in
+    // `withWake`'s catch — which reports via `console.warn` by default.
+    // Asserting `warn` was never called catches that bug even though
+    // delivery still succeeds either way (wake failures never propagate).
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { handle } = await harness()
     await handle.devices.register({ actor: 'u_ben', kind: 'web-push', token: 'tok' })
     await handle.sink(INTENT)
     expect(await handle.inbox.list({ recipient: 'u_ben', now: 2_000 })).toHaveLength(1)
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('a throwing sender does not cost the notification', async () => {

@@ -47,7 +47,6 @@ export interface RegisterDeviceInput {
 export interface DeviceStore {
   list(): Promise<unknown>
   query(): { toArray(): DeviceRegistration[] }
-  get(id: string): Promise<DeviceRegistration | null>
   put(id: string, row: DeviceRegistration): Promise<void>
   delete(id: string): Promise<void>
 }
