@@ -42,7 +42,10 @@ describe('withWake', () => {
     const order: string[] = []
     const { registry } = await seeded()
     const sender = { wake: async () => { order.push('wake'); return OK } }
-    const sink = withWake(async () => { order.push('deliver') }, { registry, sender })
+    const sink = withWake(
+      async () => { await Promise.resolve(); order.push('deliver') },
+      { registry, sender },
+    )
     await sink(INTENT)
     expect(order).toEqual(['deliver', 'wake'])
   })
@@ -76,7 +79,11 @@ describe('withWake', () => {
   })
 
   it('skips the wake entirely when no recipient has a device', async () => {
-    const registry = new DeviceRegistry(fakeStore(), () => 1)
+    const store = fakeStore()
+    const registry = new DeviceRegistry(store, () => 1)
+    // A device exists, but for a NON-recipient — an implementation that
+    // ignored the recipient filter would still call wake here.
+    await registry.register({ actor: 'u_zoe', kind: 'fcm', token: 'zoe-tok' })
     const wake = vi.fn(async () => OK)
     await withWake(async () => {}, { registry, sender: { wake } })(INTENT)
     expect(wake).not.toHaveBeenCalled()
@@ -130,6 +137,40 @@ describe('withWake', () => {
       { registry, sender: { wake } },
     )
     await expect(sink(INTENT)).rejects.toThrow('write failed')
+    expect(wake).not.toHaveBeenCalled()
+  })
+
+  it('is best-effort even when pruning a permanently-failed endpoint rejects', async () => {
+    // Covers the third throw site: registry.unregister() inside the prune
+    // loop. If a refactor narrowed the try block to wrap only sender.wake,
+    // this rejection would escape uncaught and this test would fail.
+    const { store, registry } = await seeded()
+    const before = (await registry.list('u_ben'))[0]!
+    vi.spyOn(store, 'delete').mockRejectedValue(new Error('delete down'))
+    const sender = {
+      wake: async (): Promise<WakeResult> => ({
+        delivered: 1,
+        failed: [{ endpointId: before.endpointId, reason: 'gone', permanent: true }],
+      }),
+    }
+    const onWakeError = vi.fn()
+    const sink = withWake(async () => {}, { registry, sender, onWakeError })
+    await expect(sink(INTENT)).resolves.toBeUndefined()
+    expect(onWakeError).toHaveBeenCalledTimes(1)
+  })
+
+  it('is best-effort even when reading the device registry itself rejects', async () => {
+    // Covers the first throw site: registry.listAll(). If a refactor
+    // narrowed the try block to start after this call, this rejection
+    // would escape uncaught and this test would fail.
+    const store = fakeStore()
+    const registry = new DeviceRegistry(store, () => 1)
+    vi.spyOn(store, 'list').mockRejectedValue(new Error('list down'))
+    const wake = vi.fn(async () => OK)
+    const onWakeError = vi.fn()
+    const sink = withWake(async () => {}, { registry, sender: { wake }, onWakeError })
+    await expect(sink(INTENT)).resolves.toBeUndefined()
+    expect(onWakeError).toHaveBeenCalledTimes(1)
     expect(wake).not.toHaveBeenCalled()
   })
 })
