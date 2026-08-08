@@ -4,6 +4,13 @@ Where `@klum-db/lobby` — the **control plane** over a fleet of sovereign `@noy
 
 Shipped through `@klum-db/lobby@0.2.0-pre.30`: the four pillars (Federation, Interchange, Custody re-export, Surface), Dock → `graduate()`, the WS-3 federation tooling (`groupInspector` / `meterGroup` / `klum` CLI), the Transform/Cutover/**Rollout** vocabulary + the `migrate*`→`rollout*`/`cutover*` rename, and optional tooling peers.
 
+Also shipped: the **notifications rule engine** (`NotificationRuleEngine`, #37) — actor-side rule
+evaluation over the `@noy-db/hub/cargo` `onAfterWrite` seam, emitting reference-only intents to a
+caller-supplied sink (see `docs/notifications-rule-engine.md`, `docs/notifications-cross-actor.md`).
+It persists nothing and opens no vault. **Next slice: #38 (in-app delivery)** — a sink that persists
+those intents into a per-fleet notifications vault plus an inbox read surface — followed by #39
+(push transport).
+
 ---
 
 ## 1 · Session-consolidation orchestrator (#469 Slice 4) — **next up**

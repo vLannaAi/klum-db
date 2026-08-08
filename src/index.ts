@@ -454,3 +454,6 @@ export type {
   SurfaceStatus,
   SurfaceConflictPolicy,
 } from './federation/types.js'
+
+// ─── #37: Notifications rule engine (actor-side) ──────────────────────────────
+export * from './notifications/index.js'
