@@ -8,7 +8,7 @@
  *
  * @module
  */
-import type { Noydb, Unsubscribe, WriteHook } from '@noy-db/hub/cargo'
+import type { Noydb, Unsubscribe, WriteEvent } from '@noy-db/hub/cargo'
 import { matchesRule, resolveRecipients } from './match.js'
 import type {
   NotificationIntent,
@@ -18,11 +18,12 @@ import type {
 } from './types.js'
 
 /**
- * `/cargo` publishes `WriteHook` but not `WriteEvent` by name, so the
- * event shape is derived structurally rather than by reaching into hub
- * internals. Drop this alias once noy-db exports `WriteEvent`.
+ * Re-exported so consumers of this module can name the event type without
+ * reaching for the hub themselves. `/cargo` exports it directly as of
+ * noy-db 0.6.0-pre.4 (noy-db#999); before that it had to be derived as
+ * `Parameters<WriteHook>[0]`.
  */
-export type WriteEvent = Parameters<WriteHook>[0]
+export type { WriteEvent }
 
 export interface ErrorContext {
   phase: 'match' | 'sink'

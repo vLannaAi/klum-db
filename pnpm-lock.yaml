@@ -12,26 +12,26 @@ importers:
         specifier: ^9.18.0
         version: 9.39.4
       '@noy-db/as-xlsx':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(@noy-db/as-zip@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))))(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(@noy-db/as-zip@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))))(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@noy-db/as-zip':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@noy-db/hub':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
       '@noy-db/in-devtools':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@noy-db/on-magic-link':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@noy-db/to-memory':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@noy-db/to-meter':
-        specifier: 0.6.0-pre.3
-        version: 0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
+        specifier: 0.6.0-pre.4
+        version: 0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.21
@@ -289,25 +289,25 @@ packages:
   '@nodable/entities@2.2.0':
     resolution: {integrity: sha512-9uGyhaQavEUMC8AIddIjau4NsnsXhou+j5sBAGojCM1oxmQpVKTWR/9JxABD6UAv12vpIms55fPZKFQEhG6uBg==}
 
-  '@noy-db/as-xlsx@0.6.0-pre.3':
-    resolution: {integrity: sha512-7m4vBisfk7VbeuyDeauGfoSOMBhGxA4V9v0MW90ijCz7yYmEGzXNqJ1j/CfbjKm4PIrYxZ3QEcCWqw5mrd1pww==}
+  '@noy-db/as-xlsx@0.6.0-pre.4':
+    resolution: {integrity: sha512-/iuXos7GW6laPEAarO1EPpjtRm6l38QdLj+9+8CB5MNuKe5jWybLEdwh+wpxR71jmBhke1lcgv6XJ+tvHID0xQ==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/as-zip': 0.6.0-pre.3
-      '@noy-db/hub': 0.6.0-pre.3
+      '@noy-db/as-zip': 0.6.0-pre.4
+      '@noy-db/hub': 0.6.0-pre.4
 
-  '@noy-db/as-zip@0.6.0-pre.3':
-    resolution: {integrity: sha512-eA6C76Q2a15wBzfIrTT0KLDJgmU+IJ2+FfB1UMV99cHS3do1ZVc0Jx3OXNHTQjAkUgHPc3vCtJKpYsSLLsLMEA==}
+  '@noy-db/as-zip@0.6.0-pre.4':
+    resolution: {integrity: sha512-bFYqzIKrJRZUtwaA9PeMo2Tr9tnTLWA3ysUePo64uXInU0E4fH6i55ypeSUSrGDb3dq4uMmwy/5P29gn579V3A==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': 0.6.0-pre.3
+      '@noy-db/hub': 0.6.0-pre.4
 
-  '@noy-db/attestation@0.6.0-pre.3':
-    resolution: {integrity: sha512-JNDT1ObHESW1aqI4f8MiAH/8wYcofa/XKqj6EX1o1/RnoMx4KNKMAuj1VTrDnuSqvpHC7Lo/FEJoEyqI0o7GJA==}
+  '@noy-db/attestation@0.6.0-pre.4':
+    resolution: {integrity: sha512-ZpX5b0NwYOLo0AcfkIajXPTLtRzTsCoUpmR378WjmgrXTluUA6DX6ufDwlKYCyfzDIm3YjecbrM/GO62SBfaeg==}
     engines: {node: '>=22.0.0'}
 
-  '@noy-db/hub@0.6.0-pre.3':
-    resolution: {integrity: sha512-Y1dsbQVuOYxCdD7dbzUZc5hwjOfYfXsejkdDIuNd3EX/qPKrsOUVF89YvdH1bXAf8dlpeI8Nm/hp9+D9Uv6CeQ==}
+  '@noy-db/hub@0.6.0-pre.4':
+    resolution: {integrity: sha512-eOEa9qZVDd84sufMqLQI8MElAEnc+ujgTpz8jzOiyxnIqf6JhLROlpUZbHLkrD+PBYcBNBOsol5utt2D7qg5XA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       zod-to-json-schema: ^3.25.0
@@ -315,29 +315,29 @@ packages:
       zod-to-json-schema:
         optional: true
 
-  '@noy-db/in-devtools@0.6.0-pre.3':
-    resolution: {integrity: sha512-3wxeIbBAlTfbHT6/r9nMr4Vy09UT+Yk83TOGgc4sEdkmjhIhjYUx9L/F8+VCY+LyO4GFBV7btCogiPPS21JsmQ==}
+  '@noy-db/in-devtools@0.6.0-pre.4':
+    resolution: {integrity: sha512-83CFmdKbaxFBDwoUiY0h8CqDkkmi9DXH5jI8oTQCUgRZgA7TVAlD1k8pqAnZy4vjVqYnlFOm7jZ+LUQFw/OUUg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': 0.6.0-pre.3
+      '@noy-db/hub': 0.6.0-pre.4
 
-  '@noy-db/on-magic-link@0.6.0-pre.3':
-    resolution: {integrity: sha512-YbyAUw6RZ8pbR455xk8vDcxP7NfLBP4JlAtZJrGlMFegOdcspAxBUZ5Xs7wLfCiOuFsYz+/Xu7kgeh5bQqB2aw==}
+  '@noy-db/on-magic-link@0.6.0-pre.4':
+    resolution: {integrity: sha512-tzPs0NlmNkG9iQTxzf2B7axymvRNIZtPsa8B9GoVXqu9Ixgko3ADRtgjaMjug9i855SSnubbZo6rJIzPhHE3fA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': 0.6.0-pre.3
+      '@noy-db/hub': 0.6.0-pre.4
 
-  '@noy-db/to-memory@0.6.0-pre.3':
-    resolution: {integrity: sha512-7MndiNG93k6MMDWNEcECCCQrW8Ncb+5EOn/mIm7eJ/YLWjFLenoXZ2j7OiJLQkqRPfZuWcXV1728DTB5iFIx6A==}
+  '@noy-db/to-memory@0.6.0-pre.4':
+    resolution: {integrity: sha512-5abdXgxkmpdENe8fi3RAxMK2an+JfOUxSi4bywTkl+HgKn7wcvZdybN7AYimWFG1+Wk+P9OFllgFNIvbY7HkSg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': 0.6.0-pre.3
+      '@noy-db/hub': 0.6.0-pre.4
 
-  '@noy-db/to-meter@0.6.0-pre.3':
-    resolution: {integrity: sha512-PpuY8u03g6z6ZR8YNSUn49acirwFckybC3eA2JWP3MKL/VzyBea+tcZI4H/2WMJ+cD3rbWYUNFA/D9+TD+GKTg==}
+  '@noy-db/to-meter@0.6.0-pre.4':
+    resolution: {integrity: sha512-ChIfpQ3YGBLpYEBngQnGTA2fVsaGtDgYiqsrtK4OGQaeeXqDnf6XC36TgxcEOjgybiJ+GJPsC5oV6Z0PCSkCsQ==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@noy-db/hub': 0.6.0-pre.3
+      '@noy-db/hub': 0.6.0-pre.4
 
   '@rollup/rollup-android-arm-eabi@4.62.0':
     resolution: {integrity: sha512-IPIQ55ythEHkfEd9jMEi32OQ7SxURsGA43JI22lj01OLZNt2NUbJX8YUHxkVWyQ6daHPNn0truF5nSj3DQp6YQ==}
@@ -1408,39 +1408,39 @@ snapshots:
 
   '@nodable/entities@2.2.0': {}
 
-  '@noy-db/as-xlsx@0.6.0-pre.3(@noy-db/as-zip@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))))(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+  '@noy-db/as-xlsx@0.6.0-pre.4(@noy-db/as-zip@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))))(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
-      '@noy-db/as-zip': 0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))
-      '@noy-db/hub': 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+      '@noy-db/as-zip': 0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))
+      '@noy-db/hub': 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
       fast-xml-parser: 5.9.2
 
-  '@noy-db/as-zip@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+  '@noy-db/as-zip@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
-      '@noy-db/hub': 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+      '@noy-db/hub': 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
 
-  '@noy-db/attestation@0.6.0-pre.3': {}
+  '@noy-db/attestation@0.6.0-pre.4': {}
 
-  '@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))':
+  '@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))':
     dependencies:
-      '@noy-db/attestation': 0.6.0-pre.3
+      '@noy-db/attestation': 0.6.0-pre.4
     optionalDependencies:
       zod-to-json-schema: 3.25.2(zod@3.25.76)
 
-  '@noy-db/in-devtools@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+  '@noy-db/in-devtools@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
-      '@noy-db/hub': 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+      '@noy-db/hub': 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
 
-  '@noy-db/on-magic-link@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+  '@noy-db/on-magic-link@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
-      '@noy-db/hub': 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+      '@noy-db/hub': 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
 
-  '@noy-db/to-memory@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+  '@noy-db/to-memory@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
-      '@noy-db/hub': 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+      '@noy-db/hub': 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
 
-  '@noy-db/to-meter@0.6.0-pre.3(@noy-db/hub@0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76)))':
+  '@noy-db/to-meter@0.6.0-pre.4(@noy-db/hub@0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76)))':
     dependencies:
-      '@noy-db/hub': 0.6.0-pre.3(zod-to-json-schema@3.25.2(zod@3.25.76))
+      '@noy-db/hub': 0.6.0-pre.4(zod-to-json-schema@3.25.2(zod@3.25.76))
 
   '@rollup/rollup-android-arm-eabi@4.62.0':
     optional: true
