@@ -7,9 +7,14 @@ Shipped through `@klum-db/lobby@0.2.0-pre.30`: the four pillars (Federation, Int
 Also shipped: the **notifications rule engine** (`NotificationRuleEngine`, #37) — actor-side rule
 evaluation over the `@noy-db/hub/cargo` `onAfterWrite` seam, emitting reference-only intents to a
 caller-supplied sink (see `docs/notifications-rule-engine.md`, `docs/notifications-cross-actor.md`).
-It persists nothing and opens no vault. **Next slice: #38 (in-app delivery)** — a sink that persists
-those intents into a per-fleet notifications vault plus an inbox read surface — followed by #39
-(push transport).
+It persists nothing and opens no vault.
+
+Also shipped: **in-app delivery** (#38) — `lobby.openNotifications(group)` ensures + registers a
+per-fleet notifications vault, returning a fan-out `sink` (one record per recipient, reference-only)
+for a #37 rule engine, plus a recipient-facing `inbox` (`list`/`dismiss`) with read-time `expiresAt`
+filtering and no sweeper. Per-recipient records converge under ordinary last-write-wins — no CRDT
+strategy needed. Does not grant read access; callers grant on the returned `vaultId`. **Next slice:
+#39 (push transport)** — a content-free wake-up that tells a device to fetch from the inbox.
 
 ---
 

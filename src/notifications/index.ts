@@ -18,3 +18,14 @@ export type {
   NotificationIntent,
   NotificationSink,
 } from './types.js'
+export { openNotifications } from './open.js'
+export type { NotificationsGroupRef, OpenNotificationsOptions, NotificationsHandle } from './open.js'
+export { createNotificationSink } from './delivery.js'
+export type { NotificationWriter, SinkOptions } from './delivery.js'
+export { NotificationInbox } from './inbox.js'
+export type { InboxStore, ListOptions } from './inbox.js'
+export {
+  NOTIFICATIONS_COLLECTION, NOTIFICATIONS_REGISTRY_COLLECTION,
+  notificationsVaultName, deriveNotificationId,
+} from './record.js'
+export type { NotificationRecord, NotificationsRegistryRow } from './record.js'

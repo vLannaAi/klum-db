@@ -495,3 +495,12 @@ export type {
   NotificationIntent,
   NotificationSink,
 } from './notifications/index.js'
+
+// ─── #38: Notifications delivery (in-app inbox) ────────────────────────────────
+export { NotificationInbox } from './notifications/index.js'
+export type {
+  NotificationRecord,
+  NotificationsHandle,
+  OpenNotificationsOptions,
+  NotificationsGroupRef,
+} from './notifications/index.js'

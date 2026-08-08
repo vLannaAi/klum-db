@@ -188,6 +188,35 @@ A rule is plain JSON, so it can be stored fleet-visible as config. An
 intent carries **references only** — never field values, diffs, or
 snapshots (see `docs/notifications-cross-actor.md` § 4).
 
+Delivery (#38) supplies the sink and the inbox:
+
+```ts
+const { sink, inbox, vaultId } = await lobby.openNotifications(group)
+
+const engine = new NotificationRuleEngine({ rules, sink })
+engine.attach(db, { roster })
+
+const mine = await inbox.list({ recipient: 'u_ben' })
+await inbox.dismiss(mine[0].id)
+```
+
+One intent becomes one record **per recipient**, so dismissal converges
+under ordinary last-write-wins — dismissing on a phone will not resurrect on
+a laptop, and no CRDT strategy is required. `expiresAt` is a read-time
+filter: expired notifications stop appearing, with no sweeper.
+
+`openNotifications` ensures and registers the vault but **does not grant**
+read access — recipients need a grant on `vaultId` (`teamStrategy:
+withTeam()` on the granting session).
+
+The notifications vault is registered in a `notifications-registry`
+collection inside the hub's StateManagement vault (`STATE_VAULT_NAME`) —
+not the group's own `vault-registry`. If a group was constructed with a
+caller-supplied `registry` collection living in a different vault
+(`openVaultGroup`'s `opts.registry`), the two registries end up in
+different vaults; that's deliberate, since the notifications vault is
+never a shard.
+
 ---
 
 ## Relationship with noy-db
@@ -205,6 +234,7 @@ The one-way law and the kernel seam are covered up top — here are the specific
 - **Interchange** (`extractCrossVaultPartition`, `mergeCompartment`, `migrateThenMerge`, `exportSurface`, `applySurface`): every source vault involved must be created with `cargoStrategy: withCargo()` from `@noy-db/hub/cargo`, or these calls throw `CargoNotEnabledError`.
 - **Federated retrieve** (`ShardedCollection.retrieve()` across a `VaultGroup`): additionally requires `searchStrategy: withSearch()` from `@noy-db/hub` on every vault in the group, or lexical retrieve silently returns no hits and semantic/hybrid retrieve throws `SearchNotEnabledError`.
 - **Multi-user grants** (sharing shards/registry vaults across operators and advisors): the *granting* session must be created with `teamStrategy: withTeam()` from `@noy-db/hub/team`, or `grant`/`revoke`/`rotate` throw `TeamNotEnabledError`. Grantees opening an already-granted vault need no strategy.
+- **Notifications** (`lobby.openNotifications`): ensures and registers the vault but does **not** grant read access — recipients need an explicit grant on the returned `vaultId`, from a granting session created with `teamStrategy: withTeam()`.
 
 ```ts
 import { createNoydb, withSearch } from '@noy-db/hub'
