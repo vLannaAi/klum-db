@@ -456,4 +456,18 @@ export type {
 } from './federation/types.js'
 
 // ─── #37: Notifications rule engine (actor-side) ──────────────────────────────
-export * from './notifications/index.js'
+export { NotificationRuleEngine } from './notifications/index.js'
+export type {
+  RuleEngineOptions,
+  ErrorContext,
+  WriteEvent,
+  WriteOp,
+  Severity,
+  FieldCondition,
+  RecipientSpec,
+  NotificationRule,
+  Roster,
+  NotificationRef,
+  NotificationIntent,
+  NotificationSink,
+} from './notifications/index.js'

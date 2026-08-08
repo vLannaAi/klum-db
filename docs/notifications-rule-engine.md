@@ -180,7 +180,9 @@ The roster is a snapshot supplied at `attach` time. Resolution is a synchronous
 pure lookup, so evaluation stays deterministic and testable. Roster freshness
 is the caller's responsibility — the caller already holds the keyring and the
 registry, and is the one place that knows fleet identities. To refresh, detach
-and re-attach.
+and re-attach. Note that the roster object is held by reference, so mutating
+it in place is observed by subsequent writes; replacing it with a new object
+still requires detach and re-attach.
 
 ## Error handling
 
