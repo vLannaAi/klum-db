@@ -46,6 +46,11 @@ export interface OpenNotificationsOptions {
    * no wake is attempted and delivery behaves exactly as in #38.
    */
   wakeSender?: WakeSender
+  /**
+   * Reports wake failures. Wake is best-effort and never propagates, so
+   * without this a failed push is only visible as a console warning.
+   */
+  onWakeError?: (err: unknown) => void
 }
 
 export interface NotificationsHandle {
@@ -89,7 +94,11 @@ export async function openNotifications(
 
   return {
     sink: opts.wakeSender !== undefined
-      ? withWake(baseSink, { registry: devices, sender: opts.wakeSender })
+      ? withWake(baseSink, {
+          registry: devices,
+          sender: opts.wakeSender,
+          ...(opts.onWakeError !== undefined ? { onWakeError: opts.onWakeError } : {}),
+        })
       : baseSink,
     inbox: new NotificationInbox(records),
     devices,

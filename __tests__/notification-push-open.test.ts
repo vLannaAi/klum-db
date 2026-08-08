@@ -16,12 +16,16 @@ const INTENT: NotificationIntent = {
 
 const OK: WakeResult = { delivered: 1, failed: [] }
 
-async function harness(wakeSender?: WakeSender) {
+async function harness(wakeSender?: WakeSender, onWakeError?: (err: unknown) => void) {
   const db = await createNoydb({ store: memoryStore(), user: 'u_ada', secret: 'op-pass' })
   const lobby = createLobby(db)
   const handle = await lobby.openNotifications(
     { name: 'firm-clients', db },
-    { now: () => 1_000, ...(wakeSender !== undefined ? { wakeSender } : {}) },
+    {
+      now: () => 1_000,
+      ...(wakeSender !== undefined ? { wakeSender } : {}),
+      ...(onWakeError !== undefined ? { onWakeError } : {}),
+    },
   )
   return { db, handle }
 }
@@ -80,6 +84,20 @@ describe('openNotifications + push wake (#39)', () => {
 
     await expect(handle.sink(INTENT)).resolves.toBeUndefined()
 
+    expect(await handle.inbox.list({ recipient: 'u_ben', now: 2_000 })).toHaveLength(1)
+  })
+
+  it('reports a wake failure through onWakeError without costing delivery', async () => {
+    const onWakeError = vi.fn()
+    const { handle } = await harness(
+      { wake: async () => { throw new Error('push down') } },
+      onWakeError,
+    )
+    await handle.devices.register({ actor: 'u_ben', kind: 'web-push', token: 'tok' })
+
+    await handle.sink(INTENT)
+
+    expect(onWakeError).toHaveBeenCalledTimes(1)
     expect(await handle.inbox.list({ recipient: 'u_ben', now: 2_000 })).toHaveLength(1)
   })
 
