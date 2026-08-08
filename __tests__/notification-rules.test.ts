@@ -156,3 +156,133 @@ describe('resolveRecipients', () => {
     expect(resolveRecipients({ kind: 'role', role: 'nobody' }, { vaultId: 'shard_x', roster })).toEqual([])
   })
 })
+
+import { NotificationRuleEngine } from '../src/notifications/rule-engine.js'
+import type { WriteEvent } from '../src/notifications/rule-engine.js'
+import type { NotificationIntent } from '../src/notifications/types.js'
+
+/**
+ * A WriteEvent-shaped literal. Typed as WriteEvent so `pnpm typecheck`
+ * verifies the fixture against the real hub shape — if noy-db adds a
+ * required field, this fixture fails to compile rather than silently
+ * drifting.
+ */
+function writeEvent(over: Partial<WriteEvent> = {}): WriteEvent {
+  return {
+    op: 'update',
+    vault: 'shard_x',
+    collection: 'clients',
+    docId: 'rec_1',
+    before: { riskRating: 'low' },
+    after: { riskRating: 'high' },
+    baseVersion: 4,
+    version: 5,
+    userId: 'u_ada',
+    timestamp: 1_700_000_000_000,
+    txId: 'tx_1',
+    ...over,
+  }
+}
+
+const ROSTER: Roster = {
+  roles: { u_ada: 'advisor', u_ben: 'owner' },
+  vaultOwner: { shard_x: 'u_ben' },
+}
+
+describe('NotificationRuleEngine.evaluate', () => {
+  it('emits one intent per matching rule, carrying only references', () => {
+    const engine = new NotificationRuleEngine({ rules: [RISK_RULE], sink: () => {} })
+    const intents = engine.evaluate(writeEvent(), ROSTER)
+    expect(intents).toHaveLength(1)
+    expect(intents[0]).toEqual({
+      ruleId: 'risk-escalation',
+      actorId: 'u_ada',
+      actorRole: 'advisor',
+      op: 'update',
+      ref: { vaultId: 'shard_x', collection: 'clients', recordId: 'rec_1', version: 5 },
+      recipients: ['u_ben'],
+      ts: 1_700_000_000_000,
+    } satisfies NotificationIntent)
+  })
+
+  it('emits nothing when no rule matches', () => {
+    const engine = new NotificationRuleEngine({ rules: [RISK_RULE], sink: () => {} })
+    expect(engine.evaluate(writeEvent({ collection: 'invoices' }), ROSTER)).toEqual([])
+  })
+
+  it('emits one intent per matching rule when several match', () => {
+    const second: NotificationRule = {
+      id: 'any-client-update',
+      collection: 'clients',
+      recipients: { kind: 'actors', ids: ['u_zoe'] },
+    }
+    const engine = new NotificationRuleEngine({ rules: [RISK_RULE, second], sink: () => {} })
+    expect(engine.evaluate(writeEvent(), ROSTER).map((i) => i.ruleId))
+      .toEqual(['risk-escalation', 'any-client-update'])
+  })
+
+  it('never leaks matched field values into the intent (payload minimization, spec § 4)', () => {
+    const engine = new NotificationRuleEngine({ rules: [RISK_RULE], sink: () => {} })
+    const json = JSON.stringify(engine.evaluate(writeEvent(), ROSTER))
+    expect(json).not.toContain('low')
+    expect(json).not.toContain('high')
+    expect(json).not.toContain('riskRating')
+  })
+
+  it('suppresses the acting actor and dedupes recipients', () => {
+    const selfRule: NotificationRule = {
+      id: 'self',
+      collection: 'clients',
+      recipients: { kind: 'actors', ids: ['u_ada', 'u_ben', 'u_ben'] },
+    }
+    const engine = new NotificationRuleEngine({ rules: [selfRule], sink: () => {} })
+    expect(engine.evaluate(writeEvent(), ROSTER)[0].recipients).toEqual(['u_ben'])
+  })
+
+  it('emits no intent when recipients resolve empty', () => {
+    const orphan: NotificationRule = {
+      id: 'orphan',
+      collection: 'clients',
+      recipients: { kind: 'vaultOwner' },
+    }
+    const engine = new NotificationRuleEngine({ rules: [orphan], sink: () => {} })
+    expect(engine.evaluate(writeEvent({ vault: 'unknown_shard' }), ROSTER)).toEqual([])
+  })
+
+  it('carries severity when the rule sets one, and omits it otherwise', () => {
+    const engine = new NotificationRuleEngine({
+      rules: [{ ...RISK_RULE, severity: 'critical' }],
+      sink: () => {},
+    })
+    expect(engine.evaluate(writeEvent(), ROSTER)[0].severity).toBe('critical')
+  })
+
+  it('skips a malformed rule, reports it, and still evaluates its siblings', () => {
+    const errors: Array<{ phase: string; ruleId?: string }> = []
+    const bad = { id: 'bad', collection: 'clients', get recipients(): never { throw new Error('boom') } }
+    const good: NotificationRule = {
+      id: 'good',
+      collection: 'clients',
+      recipients: { kind: 'actors', ids: ['u_ben'] },
+    }
+    const engine = new NotificationRuleEngine({
+      rules: [bad as unknown as NotificationRule, good],
+      sink: () => {},
+      onError: (_e, ctx) => errors.push(ctx),
+    })
+    expect(engine.evaluate(writeEvent(), ROSTER).map((i) => i.ruleId)).toEqual(['good'])
+    expect(errors).toEqual([{ phase: 'match', ruleId: 'bad' }])
+  })
+
+  it('evaluates with no roster at all', () => {
+    const open: NotificationRule = {
+      id: 'open',
+      collection: 'clients',
+      recipients: { kind: 'actors', ids: ['u_ben'] },
+    }
+    const engine = new NotificationRuleEngine({ rules: [open], sink: () => {} })
+    const intents = engine.evaluate(writeEvent())
+    expect(intents).toHaveLength(1)
+    expect(intents[0].actorRole).toBeUndefined()
+  })
+})
