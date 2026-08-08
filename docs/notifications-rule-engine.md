@@ -43,12 +43,16 @@ import { readPath } from '@noy-db/hub/cargo'
 type WriteEvent = Parameters<WriteHook>[0]
 ```
 
-**Known seam gap.** `/cargo` exports `WriteHook` but **not** `WriteEvent` by
-name, so the event shape is reachable only structurally via
-`Parameters<WriteHook>[0]`. This is correct and boundary-safe, but every
-consumer writing a hook must rediscover it. File an upstream noy-db issue
-asking for `WriteEvent` to be exported alongside `WriteHook`; drop the local
-alias once it lands.
+**Seam gap — closed upstream.** When this was written, `/cargo` exported
+`WriteHook` but **not** `WriteEvent` by name, so the event shape was
+reachable only structurally via `Parameters<WriteHook>[0]`. That workaround
+was boundary-safe but every consumer had to rediscover it, and the next
+obvious move — reaching into `dist/port/...` — was exactly what the
+published-subpath boundary exists to prevent.
+
+Filed as noy-db#999 and **shipped in hub `0.6.0-pre.4`**. `WriteEvent` is now
+imported by name and re-exported from `rule-engine.ts`; the local alias is
+gone.
 
 Dotted field paths are resolved with hub's own `readPath` (exported from
 `/cargo`'s floor), so path semantics match the query DSL rather than
