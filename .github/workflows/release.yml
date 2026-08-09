@@ -119,6 +119,31 @@ jobs:
           fi
           echo "✅ @klum-db/lobby@$PKG_VERSION matches release tag v$VERSION"
 
+      # The dist-tag is routed entirely by the "Set as a pre-release" checkbox on
+      # the Release form, so a forgotten tick publishes a pre-release to @latest.
+      # That is not self-healing: it takes a manual `npm dist-tag` repair.
+      #
+      # This repo has already been bitten. @klum-db/lobby@latest is stuck at
+      # 0.2.0-pre.26, whose peers demand @noy-db/hub ^0.2.0-pre.24 — so anyone
+      # running `pnpm add @klum-db/lobby` untagged gets something that cannot
+      # co-install with the current family. Refuse the mismatch rather than rely
+      # on the checkbox. Ported from noy-db-ui#22.
+      #
+      # Only this direction is blocked: a STABLE version published to @next is
+      # harmless and recoverable, so it stays allowed.
+      - name: Refuse a semver pre-release routed to @latest
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          if [ "${{ github.event.release.prerelease }}" != "true" ] && [ "${VERSION#*-}" != "$VERSION" ]; then
+            echo "::error::$VERSION is a semver pre-release, but this Release is not marked as a pre-release."
+            echo "::error::Publishing would route it to @latest — which is how @latest got stuck at 0.2.0-pre.26."
+            echo "::error::Tick 'Set as a pre-release' on the Release and re-run."
+            exit 1
+          fi
+          echo "✅ routing check passed (version=$VERSION, prerelease=${{ github.event.release.prerelease }})"
+
   # ── Gate 2: publish with provenance ──────────────────────────────────
   #
   # Explicit event guard: publish only runs on:
