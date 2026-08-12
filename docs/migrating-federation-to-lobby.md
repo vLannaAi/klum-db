@@ -44,7 +44,12 @@ const sv = await lobby.openStateManagementVault()
 //                  readMultiVaultBundleCompartment } from '@klum-db/lobby'
 ```
 
-The **single-vault** `.noydb` bundle (`writeNoydbBundle` / `readNoydbBundle` / `readNoydbBundleHeader`) **stays** in `@noy-db/hub/bundle` — only the multi-compartment (NDBM) bundle moved.
+The **single-vault** `.noydb` pod (`writePod` / `readPod` / `readPodHeader`) **stays** in `@noy-db/hub` — only the multi-compartment (NDBM) bundle moved.
+
+> Renamed since this guide was written: the helpers were `writeNoydbBundle` / `readNoydbBundle` /
+> `readNoydbBundleHeader` on the `@noy-db/hub/bundle` subpath. The subpath is now `@noy-db/hub/pod`,
+> and the aliases were **removed outright** in `@noy-db/hub@0.6.0-pre.14` (noy-db#1052) rather than
+> deprecated again — so the compiler, not a doc comment, is what tells you to update.
 
 ### C. Renames — the Rollout / Cutover vocabulary (`@klum-db/lobby` ≥ `0.2.0-pre.29`)
 

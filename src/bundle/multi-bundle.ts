@@ -3,7 +3,7 @@
  * that embeds N standard single-vault `.noydb` bundles plus an
  * unencrypted, owner-curated **manifest**. The v1 single-vault format
  * is untouched; each compartment is a complete v1 bundle, produced by
- * `writePod` and read by `readNoydbBundle`.
+ * `writePod` and read by `readPod`.
  *
  * Layout: magic 'NDBM'(4) · version(1) · reserved(1) · manifestLen(4 BE)
  *         · manifest JSON · concat(inner v1 bundles, in manifest order).
@@ -15,7 +15,7 @@ import {
   writePod,
   readPodHeader,
   readPodCover,
-  hasNoydbBundleMagic,
+  hasNoydbPodMagic,
   type Cover,
   type WritePodOptions,
 } from '@noy-db/hub/pod'
@@ -212,7 +212,7 @@ export async function writeMultiVaultBundle(
  */
 export async function readNoydbBundleManifest(bytes: Uint8Array): Promise<CompartmentManifest[]> {
   if (hasMultiMagic(bytes)) return [...decodeMultiBundle(bytes).manifest.compartments]
-  if (hasNoydbBundleMagic(bytes)) {
+  if (hasNoydbPodMagic(bytes)) {
     const header = readPodHeader(bytes)
     const env = readPodCover(bytes)
     const entry: { -readonly [K in keyof CompartmentManifest]: CompartmentManifest[K] } = {
@@ -228,12 +228,12 @@ export async function readNoydbBundleManifest(bytes: Uint8Array): Promise<Compar
 
 /**
  * Extract one compartment's inner v1 `.noydb` bundle bytes, ready to
- * pass to `readNoydbBundle`. `selector` is a compartment `handle` or a
+ * pass to `readPod`. `selector` is a compartment `handle` or a
  * zero-based index. For a single v1 bundle, the bundle itself is the
  * only compartment.
  *
  * Does NOT verify the manifest `innerSha256` — it returns the raw
- * slice. Integrity is enforced downstream: `readNoydbBundle` verifies
+ * slice. Integrity is enforced downstream: `readPod` verifies
  * the inner bundle's own `bodySha256`. Callers wanting an early,
  * pre-decrypt check can hash the returned bytes against the
  * compartment's `innerSha256`.
@@ -242,7 +242,7 @@ export function readMultiVaultBundleCompartment(bytes: Uint8Array, selector: str
   if (typeof selector === 'number' && !Number.isInteger(selector)) {
     throw new Error(`readMultiVaultBundleCompartment: numeric selector must be an integer, got ${selector}.`)
   }
-  if (hasNoydbBundleMagic(bytes) && !hasMultiMagic(bytes)) {
+  if (hasNoydbPodMagic(bytes) && !hasMultiMagic(bytes)) {
     const header = readPodHeader(bytes)
     if (selector === 0 || selector === header.handle) return bytes
     throw new Error(`readMultiVaultBundleCompartment: single v1 bundle has only compartment "${header.handle}".`)

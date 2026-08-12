@@ -8,7 +8,7 @@ import {
   readMultiVaultBundleCompartment,
   type MultiBundleManifest,
 } from '../src/bundle/multi-bundle.js'
-import { writeNoydbBundle, readNoydbBundle, readNoydbBundleHeader } from '@noy-db/hub/pod'
+import { writePod, readPod, readPodHeader } from '@noy-db/hub/pod'
 import { createNoydb } from '@noy-db/hub'
 import type { Noydb } from '@noy-db/hub'
 import type {
@@ -228,7 +228,7 @@ describe('multi-bundle > readers', () => {
     await invoicesB.put('pay-2', { id: 'pay-2', status: 'settled' })
   })
 
-  it('each compartment loads independently via readNoydbBundle', async () => {
+  it('each compartment loads independently via readPod', async () => {
     const bytes = await writeMultiVaultBundle([{ vault: a }, { vault: b }])
     const manifest = await readNoydbBundleManifest(bytes)
     for (const c of manifest) {
@@ -236,16 +236,16 @@ describe('multi-bundle > readers', () => {
       const { sha256Hex } = await import('@noy-db/hub/cargo')
       const verifySha = await sha256Hex(innerBytes)
       expect(verifySha).toBe(c.innerSha256)
-      const read = await readNoydbBundle(innerBytes)   // loads independently
+      const read = await readPod(innerBytes)   // loads independently
       expect(read.dumpJson.length).toBeGreaterThan(0)
     }
   })
 
   it('reads a single v1 bundle as a 1-entry manifest (back-compat)', async () => {
-    const v1 = await writeNoydbBundle(a)
+    const v1 = await writePod(a)
     const manifest = await readNoydbBundleManifest(v1)
     expect(manifest).toHaveLength(1)
-    expect(manifest[0]!.handle).toBe(readNoydbBundleHeader(v1).handle)
+    expect(manifest[0]!.handle).toBe(readPodHeader(v1).handle)
     // the whole v1 bundle IS the only compartment:
     expect(readMultiVaultBundleCompartment(v1, manifest[0]!.handle)).toEqual(v1)
   })
@@ -271,10 +271,10 @@ describe('multi-bundle > back-compat + default disclosure', () => {
     await invoicesA.put('inv-2', { id: 'inv-2', amount: 200 })
   })
 
-  it('single-vault writeNoydbBundle is byte-unaffected by this feature', async () => {
+  it('single-vault writePod is byte-unaffected by this feature', async () => {
     // Two writes of the same vault content produce stable handles (existing v1 guarantee).
-    const x = await writeNoydbBundle(a)
-    expect(readNoydbBundleHeader(x).formatVersion).toBe(1) // still v1; NDB1, not NDBM
+    const x = await writePod(a)
+    expect(readPodHeader(x).formatVersion).toBe(1) // still v1; NDB1, not NDBM
     expect(x.subarray(0, 4)).not.toEqual(NOYDB_MULTI_BUNDLE_MAGIC)
   })
 
