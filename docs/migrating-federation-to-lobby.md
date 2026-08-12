@@ -33,7 +33,7 @@ const sv = await lobby.openStateManagementVault()
 | `Noydb.openStateManagementVault()` | `lobby.openStateManagementVault()` |
 | `VaultGroup`, `ShardedCollection`, `ShardedQuery`, `CrossVaultAggregation`, `StateManagementVault` (types) | exported from `@klum-db/lobby` |
 | `crossShardJoin` query op | method on the klum sharded query (`group.collection(n).query().crossShardJoin(...)`) |
-| `CrossShardJoinError`, `UnknownShardError`, `ShardProvisioningError`, `VaultTemplateNotFoundError`, `ReservedVaultNameError`, `DataResidencyError` | re-exported from `@klum-db/lobby` (also still on `@noy-db/hub/kernel`) |
+| `CrossShardJoinError`, `UnknownShardError`, `ShardProvisioningError`, `VaultTemplateNotFoundError`, `ReservedVaultNameError`, `DataResidencyError` | re-exported from `@klum-db/lobby` (also still on `@noy-db/hub/cargo`) |
 
 ### B. Multivault bundle moved: `@noy-db/hub` → `@klum-db/lobby`
 

@@ -42,7 +42,7 @@ flowchart TD
 ```
 </details>
 
-- **Coordination without custody.** klum drives the fleet — federate, move data, custody, sync — but **never owns the data**: keys, crypto, and records stay sovereign in each vault, and klum binds to one stable contract (`@noy-db/hub/kernel`), never hub internals. *(One-way, and enforced — a build-time guard means no `@noy-db` package can ever import `@klum-db`.)*
+- **Coordination without custody.** klum drives the fleet — federate, move data, custody, sync — but **never owns the data**: keys, crypto, and records stay sovereign in each vault, and klum binds to one stable contract (`@noy-db/hub/cargo`), never hub internals. *(One-way, and enforced — a build-time guard means no `@noy-db` package can ever import `@klum-db`.)*
 - **Bring the work to the data, not the data to a lake.** Cross-vault queries resolve *across* the group — each vault answers for its own slice under its own keys, nothing pools. No central honeypot to breach.
 - **Small core, coordinated reach.** Each vault stays small, portable, and individually revocable; orchestration recovers the cross-cutting reach you'd otherwise need a monolith for.
 - **A group, not a cluster.** Vaults are sovereign and non-fungible — one subject = one vault, the subject holds the deed. *Joined, not merged; allied, not absorbed.* (Thai *klum* กลุ่ม = a group.)

@@ -32,15 +32,15 @@ The vaults are a **group, not a cluster** — sovereign and non-fungible (one su
 
 The dependency runs **one way**: `@klum-db/lobby` → `@noy-db/hub`. No `@noy-db` package ever imports `@klum-db` (enforced by noy-db's build-time `no-outbound-klum-import` guard — absolute, no allowlist). That asymmetry is the whole design: a vault must never need the Lobby to be complete.
 
-## The seam — klum binds only to the published `@noy-db/hub/kernel`
+## The seam — klum binds only to the published `@noy-db/hub/cargo`
 
-klum depends on **published** `@noy-db` packages (never a workspace link, never hub internals), and binds to one stable contract subpath: **`@noy-db/hub/kernel`**. What that contract carries:
+klum depends on **published** `@noy-db` packages (never a workspace link, never hub internals), and binds to one stable contract subpath: **`@noy-db/hub/cargo`**. What that contract carries:
 
 - **Runtime helpers:** `generateULID`, `sha256Hex`, plus the quorum/barrier primitives `isQuorum` / `runDrainBarrier` (added in #469).
 - **Error classes** (so consumers `instanceof` them from klum): `ValidationError`, `ReservedVaultNameError`, `VaultTemplateNotFoundError`, `CrossShardJoinError`, `UnknownShardError`, `ShardProvisioningError`, `DataResidencyError`, `NoAccessError`.
 - **Type-only** (erased at emit; klum cannot `instanceof` these): `Vault`, `Collection`, `Noydb`, `Query`, `LiveQuery`, `Operator`, `JoinStrategy`, `AggregateResult`/`AggregateSpec`/`LiveAggregation`, `ChangeEvent`, `IndexDef`, plus the new coordination port types `CoordinationProvider`/`WriterPresence`/`FenceState`/`DrainBarrierOptions`. And `Noydb.isClosed`.
 
-The kernel is **additive-only** — removing anything is a breaking change requiring a coordinated bump on both repos. klum also consumes `@noy-db/hub` (root + `/bundle`) and `@noy-db/as-xlsx` for the single-vault primitives it composes (the `.noydb` bundle read/write, `extractPartition`, `decryptExtractedPartition`, the single-vault xlsx export).
+The cargo seam is **additive-only** — removing anything is a breaking change requiring a coordinated bump on both repos. klum also consumes `@noy-db/hub` (root + `/pod` + `/share-link`) and `@noy-db/as-xlsx` for the single-vault primitives it composes (the `.noydb` pod read/write, `extractPartition`, `decryptExtractedPartition`, the single-vault xlsx export).
 
 ## The boundary law — deciding what goes where
 
