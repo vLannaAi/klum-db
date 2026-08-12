@@ -71,7 +71,7 @@ The app is the composition root: it injects the concrete implementation into `cr
 |---|---|
 | `VaultGroup`, sharding, `crossShardJoin`, Insight Vault, StateManagement Vault | the `Vault` / `Collection` / record / field model |
 | Fleet rollout (`rolloutSchema` / `cutoverShard`) — *orchestration* | per-vault schema **Cutover** (the drain-barrier mechanism) + the **Transform** |
-| Multivault (NDBM) bundle (`writeMultiVaultBundle` / readers) | single-vault `.noydb` bundle (`writeNoydbBundle`), `extractPartition` |
+| Multivault (NDBM) bundle (`writeMultiVaultBundle` / readers) | single-vault `.noydb` pod (`writePod`), `extractPartition` |
 | Cross-vault extraction / `mergeCompartment` / `migrateThenMerge` | keyring, per-record CEK, sealing, withdrawal, **custody impl** |
 | Surface (scoped sync), Dock → `graduate()` | the **coordination port** + `by-tabs`/`by-peer` real-time impls |
 | Group tooling adapters (`groupInspector`, `meterGroup`, the `klum` CLI) | the dev-tools / meter contracts these adapt to (`@noy-db/in-devtools`) |
