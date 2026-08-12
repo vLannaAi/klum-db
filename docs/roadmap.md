@@ -53,9 +53,9 @@ since records are written before any wake is attempted. **Milestone 4 (#37 → #
 
 **What:** `Lobby.transferPartition(fromVault → toVaultRef, …)` choreographing a partition handoff between two vaults in a group: `extractPartition` → `adoptPartition` → `createOwnerOnAdoptedPartition` → destroy the transfer seal.
 
-**Why klum:** genuinely crosses the vault/store boundary (sender → recipient). The crypto primitives stay noy (`@noy-db/hub/bundle`); the Lobby sequences them — the one transfer capability the WS-2 governance analysis surfaced as legitimately klum's (the in-place custody/withdrawal ceremonies stayed in noy).
+**Why klum:** genuinely crosses the vault/store boundary (sender → recipient). The crypto primitives stay noy (`@noy-db/hub/cargo`); the Lobby sequences them — the one transfer capability the WS-2 governance analysis surfaced as legitimately klum's (the in-place custody/withdrawal ceremonies stayed in noy).
 
-**Builds on:** the published transfer/adopt primitives in `@noy-db/hub/bundle`.
+**Builds on:** the published transfer/adopt primitives in `@noy-db/hub/cargo`.
 
 **Scope:** net-new orchestration over public primitives; justified by a real fleet-handoff scenario (moving a client's vault between shards/regions).
 

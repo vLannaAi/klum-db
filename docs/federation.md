@@ -8,7 +8,7 @@ See [architecture.md](architecture.md) for the control-plane / data-plane bounda
 
 ## Overview
 
-The federation layer partitions data across a fleet of sovereign `@noy-db` vaults and provides transparent write routing, fan-out reads, distributed aggregation, cross-vault joins, reactive live queries, federated retrieval, Insight Vault derivations, and fleet schema migration. All cross-vault orchestration runs over the `@noy-db/hub/kernel` seam — never hub internals.
+The federation layer partitions data across a fleet of sovereign `@noy-db` vaults and provides transparent write routing, fan-out reads, distributed aggregation, cross-vault joins, reactive live queries, federated retrieval, Insight Vault derivations, and fleet schema migration. All cross-vault orchestration runs over the `@noy-db/hub/cargo` seam — never hub internals.
 
 **Entry point:** `createLobby(db)` → `lobby.openVaultGroup(name, opts)` → `VaultGroup<T>`.
 
@@ -227,7 +227,7 @@ lq.stop()
 1. No join legs are present (the `aggregateSource()` returns `this`, which exposes `fanoutReduce`)
 2. Every reducer in `spec` exposes the `merge` seam — `canPartialReduce(spec)` (`partial-reduce.ts:28`) returns `true`
 
-All standard aggregators from `@noy-db/hub/aggregate` (`sum`, `count`, `avg`, `min`, `max`) expose `merge`. A custom reducer without `merge` forces the central-reduce fallback. The result is identical either way.
+All standard reducers from `@noy-db/hub/reduce` (`sum`, `count`, `avg`, `min`, `max`) expose `merge`. A custom reducer without `merge` forces the central-reduce fallback. The result is identical either way.
 
 **Distributed path:**
 

@@ -1,6 +1,6 @@
 {
   "name": "@klum-db/lobby",
-  "version": "0.4.0-pre.4",
+  "version": "0.4.0-pre.5",
   "description": "klum-db Lobby — orchestrates a group of sovereign noy-db vaults (federation, interchange, custody). The outward framework to noy-db's inward vault.",
   "license": "MIT",
   "author": "vLannaAi <vicio@lanna.ai>",
@@ -50,7 +50,7 @@
   },
   "peerDependencies": {
     "@noy-db/as-xlsx": "^0.4.0-pre.0 || ^0.5.0 || ^0.6.0-pre.0",
-    "@noy-db/hub": "^0.4.0-pre.1 || ^0.4.0 || ^0.5.0 || ^0.6.0-pre.0",
+    "@noy-db/hub": "^0.6.0-pre.0",
     "@noy-db/in-devtools": "^0.4.0-pre.0 || ^0.5.0 || ^0.6.0-pre.0",
     "@noy-db/to-meter": "^0.4.0-pre.0 || ^0.5.0 || ^0.6.0-pre.0",
     "@noy-db/on-magic-link": "^0.4.0-pre.1 || ^0.5.0 || ^0.6.0-pre.0"
@@ -68,13 +68,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
-    "@noy-db/as-xlsx": "0.6.0-pre.4",
-    "@noy-db/as-zip": "0.6.0-pre.4",
-    "@noy-db/hub": "0.6.0-pre.14",
-    "@noy-db/in-devtools": "0.6.0-pre.4",
-    "@noy-db/on-magic-link": "0.6.0-pre.4",
-    "@noy-db/to-memory": "0.6.0-pre.4",
-    "@noy-db/to-meter": "0.6.0-pre.4",
+    "@noy-db/as-xlsx": "0.6.0-pre.16",
+    "@noy-db/as-zip": "0.6.0-pre.16",
+    "@noy-db/hub": "0.6.0-pre.16",
+    "@noy-db/in-devtools": "0.6.0-pre.16",
+    "@noy-db/on-magic-link": "0.6.0-pre.16",
+    "@noy-db/to-memory": "0.6.0-pre.16",
+    "@noy-db/to-meter": "0.6.0-pre.16",
     "@types/node": "^22.0.0",
     "eslint": "^9.18.0",
     "tsup": "^8.4.0",
