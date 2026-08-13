@@ -1,0 +1,61 @@
+name: Peer floor
+
+# Does @klum-db/lobby actually COMPILE against the oldest @noy-db/* versions its
+# peer ranges admit?
+#
+# Ported from noy-db-to (its PR #92). Deliberately NOT part of ci.yml: every gate
+# there — build, lint, typecheck, 394 tests — resolves @noy-db/* from the exact
+# DEV PIN, so none of them ever exercises the declared peer RANGES. A range can
+# promise versions the code cannot run on and the whole suite stays green.
+#
+# It found a live one on its first run here: the hub range said ^0.6.0-pre.0
+# while src/bundle/multi-bundle.ts needs hasNoydbPodMagic, which landed in
+# 0.6.0-pre.14. That range had already been narrowed once, in #85 — from a
+# four-branch range to ^0.6.0-pre.0 — by reasoning about which MAJOR line a
+# symbol appeared in, without pinning down which pre-release. Compiling is what
+# closes that gap.
+#
+# Checks all five @noy-db peers including the three optional ones. "Optional"
+# means the consumer may omit it, not that the range may be wrong.
+#
+# Scoped to package.json edits — the only place a range can change.
+
+on:
+  pull_request:
+    paths: ['package.json', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
+  push:
+    branches: [main]
+    paths: ['package.json', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: peer-floor-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  peer-floor:
+    name: Compile against the advertised floors
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+
+      # No pnpm store cache on purpose: this job's whole point is resolving
+      # @noy-db versions that are NOT the dev pin, and a cache keyed on the
+      # lockfile would mask a floor that cannot even be installed.
+      - name: Install (dev pin)
+        run: pnpm install --frozen-lockfile
+
+      - name: Show the plan
+        run: node scripts/check-peer-floor.mjs --dry-run
+
+      - name: Compile against the declared floors
+        run: node scripts/check-peer-floor.mjs
