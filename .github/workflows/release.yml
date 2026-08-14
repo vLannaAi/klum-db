@@ -3,8 +3,9 @@ name: Release to npm
 # Strict release pipeline for the @klum-db/lobby standalone package.
 #
 # Triggered on GitHub Release `published`. Runs the full verification
-# gate (install + build + lint + typecheck + test) on a clean checkout
-# at the release tag, and only publishes if every gate passes.
+# gate (install + build + lint + typecheck + test) plus the peer-floor
+# gate (the declared peer ranges must actually compile) on a clean
+# checkout at the release tag, and only publishes if every gate passes.
 #
 # Publishes with `--provenance` so the npm registry attests a
 # verifiable cryptographic link between the tarball and this workflow
@@ -52,7 +53,7 @@ on:
         default: 'latest'
   push:
     branches: [main]
-    paths: ['.github/workflows/release.yml']
+    paths: ['.github/workflows/release.yml', '.github/workflows/peer-floor.yml']
 
 concurrency:
   group: release-${{ github.ref }}
@@ -144,7 +145,30 @@ jobs:
           fi
           echo "✅ routing check passed (version=$VERSION, prerelease=${{ github.event.release.prerelease }})"
 
-  # ── Gate 2: publish with provenance ──────────────────────────────────
+  # ── Gate 2: the peer ranges must be TRUE, not merely well-formed ─────
+  #
+  # Every step in `verify` above resolves @noy-db/* from the exact dev pin, so
+  # none of them ever exercises the declared peer RANGES. A range can promise
+  # versions the code cannot run on and all 394 tests stay green — which is
+  # precisely what 0.4.0-pre.5 shipped: `^0.6.0-pre.0` while the code needs
+  # hasNoydbPodMagic from 0.6.0-pre.14. scripts/check-peer-floor.mjs existed at
+  # that point and would have caught it; it just never ran on the release path,
+  # because peer-floor.yml is scoped to package.json edits and a Release event
+  # is not one.
+  #
+  # Called as a reusable workflow rather than inlined so there is one config for
+  # the guard. That matters here: peer-floor.yml deliberately runs with NO pnpm
+  # store cache (a cache keyed on the lockfile can mask a floor that cannot even
+  # be installed, and "cannot install" is itself a failed claim), while `verify`
+  # above keeps one. Inlining would have quietly put the cache in front of it.
+  peer-floor:
+    name: Peer floor
+    if: github.event_name == 'release' || github.event.inputs.confirm == 'PUBLISH' || github.event_name == 'push'
+    uses: ./.github/workflows/peer-floor.yml
+    with:
+      ref: ${{ github.event.release.tag_name || github.ref }}
+
+  # ── Gate 3: publish with provenance ──────────────────────────────────
   #
   # Explicit event guard: publish only runs on:
   #   - a `release` event (someone created a GitHub Release), or
@@ -156,7 +180,7 @@ jobs:
   # could auto-publish to npm without explicit confirmation.
   publish:
     name: Publish to npm
-    needs: verify
+    needs: [verify, peer-floor]
     if: |
       github.event_name == 'release' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'PUBLISH')
@@ -241,10 +265,31 @@ jobs:
       # Check which npm account the token belongs to. If this step fails,
       # the token is invalid; if it shows the wrong user, the user's account
       # doesn't own @klum-db/*.
+      #
+      # It is `continue-on-error` on purpose — a diagnostic must never be what
+      # fails a release. But a non-fatal step that fails quietly is invisible:
+      # the run still reports success and nobody opens the job. So the failure
+      # branch is annotated AND written to the run summary, where it is legible
+      # without drilling in.
       - name: Check npm auth (whoami)
         run: |
-          WHOAMI=$(npm whoami 2>&1) && echo "npm user: $WHOAMI" || echo "npm whoami failed: $WHOAMI"
-          echo "npm user: ${WHOAMI:-failed}" >> "$GITHUB_STEP_SUMMARY"
+          if WHOAMI=$(npm whoami 2>&1); then
+            echo "npm user: $WHOAMI"
+            echo "- npm user: \`$WHOAMI\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::npm whoami failed: $WHOAMI"
+            {
+              echo "### ⚠️ npm auth check FAILED"
+              echo ""
+              echo '```'
+              echo "$WHOAMI"
+              echo '```'
+              echo ""
+              echo "npm reports write-path auth failures as \`404 Not Found\`, never \`401\` —"
+              echo "so \"is not in this registry\" almost always means an expired or wrong-account"
+              echo "NPM_TOKEN, not a naming problem. The publish step below will fail too."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true

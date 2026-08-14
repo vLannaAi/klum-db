@@ -19,6 +19,12 @@ name: Peer floor
 # means the consumer may omit it, not that the range may be wrong.
 #
 # Scoped to package.json edits — the only place a range can change.
+#
+# Also exposed as `workflow_call` so release.yml can gate a publish on it. That
+# path is not redundant with the push/pull_request triggers: those are scoped to
+# package.json edits, and a Release event re-runs neither. 0.4.0-pre.5 shipped a
+# false range for exactly that reason — the guard existed and the release path
+# could not see it.
 
 on:
   pull_request:
@@ -27,6 +33,12 @@ on:
     branches: [main]
     paths: ['package.json', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to check out (release.yml passes the release tag)'
+        required: false
+        type: string
 
 concurrency:
   group: peer-floor-${{ github.ref }}
@@ -41,6 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.ref }}
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
