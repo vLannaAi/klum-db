@@ -95,6 +95,43 @@ describe('computeFloors', () => {
     )
   })
 
+  // The third semver case. Unlike the two above it fails SLOWLY: it plans a
+  // check against @noy-db/<pkg>@0.0.0, which no @noy-db package has ever
+  // published, so it surfaces minutes later at the install step and blames the
+  // registry rather than the manifest.
+  it.each([
+    ['an empty range', ''],
+    ['a whitespace-only range', '   '],
+    ['the * wildcard', '*'],
+    ['the x wildcard', 'x'],
+    // Both of these floor at 0.0.0 without looking like wildcards, which is why
+    // the check is on the computed value rather than on the range text.
+    ['an explicit >=0.0.0', '>=0.0.0'],
+    ['an upper-bound-only range', '<1.0.0'],
+  ])('refuses %s — unbounded means unfalsifiable, not malformed', (_label, range) => {
+    expect(() => computeFloors({ peerDependencies: { '@noy-db/hub': range } })).toThrow(/has no lower bound/)
+  })
+
+  it('names the offending peer when the unbounded range is on an optional one', () => {
+    // Where this is most plausible in practice: peerDependenciesMeta.optional
+    // is exactly where someone writes "*" meaning "any". The hub invariant
+    // above would not catch it — `*` admits everything, so it fails the hub row
+    // and would pass silently on any other peer.
+    expect(() =>
+      computeFloors({
+        peerDependencies: { '@noy-db/hub': '^0.6.0-pre.14', '@noy-db/to-meter': '*' },
+        peerDependenciesMeta: { '@noy-db/to-meter': { optional: true } },
+      }),
+    ).toThrow(/@noy-db\/to-meter/)
+  })
+
+  it('does not reject a bounded range that merely starts low', () => {
+    // 0.0.1 is a real floor; only 0.0.0 is the "never published" sentinel.
+    expect(computeFloors({ peerDependencies: { '@noy-db/hub': '>=0.0.1' } })).toEqual({
+      '@noy-db/hub': '0.0.1',
+    })
+  })
+
   it('takes the lowest version across a multi-branch range, not the first branch written', () => {
     const floors = computeFloors({
       peerDependencies: { '@noy-db/as-xlsx': '^0.5.0 || ^0.4.0-pre.0 || ^0.6.0-pre.0' },
