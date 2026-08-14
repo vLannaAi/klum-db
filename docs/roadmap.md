@@ -31,7 +31,7 @@ since records are written before any wake is attempted. **Milestone 4 (#37 → #
 
 **Why klum:** the barrier *mechanism* is noy's (a single vault's concurrency control, [now a kernel port](./architecture.md#the-recurring-pattern--dependency-inversion-ports)); the *cross-vault consolidation* is pure orchestration — it spans many vaults and rides on the published port. Textbook Lobby work.
 
-**Builds on:** `@noy-db@pre.27` — `noydb.coordination` exposes the port; `WriterPresence.sessionId` is carried for grouping; `runDrainBarrier`/`isQuorum` are reusable. klum drives them through the handle, **no `by-*` dependency**.
+**Builds on:** the hub coordination port — `noydb.coordination` exposes it; `WriterPresence.sessionId` is carried for grouping; `runDrainBarrier`/`isQuorum` are reusable. klum drives them through the handle, **no `by-*` dependency**. `CoordinationProvider`, `runDrainBarrier` and `WriterPresence` are all present in the hub this repo currently pins, so this item is **unblocked** — verified against the installed package, not inferred from the version number it originally shipped in.
 
 **Scope:** a `Lobby`-level "rollout over live writers" that groups fences by `sessionId` while completing by vault; surfaces "waiting on other users" for offline writers. Pairs with §4. Spec: noy-db `docs/superpowers/specs/2026-06-20-coordination-port-469-design.md` ("Slice 4, out of scope there").
 
@@ -93,5 +93,5 @@ since records are written before any wake is attempted. **Milestone 4 (#37 → #
 
 ## Notes
 
-- **Independent versioning:** ship each as its own `0.2.0-pre.N` here; noy advances within the `^0.2.0-pre.26` peer range without forcing a bump (see [architecture §Versioning](./architecture.md#versioning--the-published-package-seam)).
+- **Independent versioning:** ship each as its own pre-release on this repo's own line; noy advances within the declared peer range without forcing a bump (see [architecture §Versioning](./architecture.md#versioning--the-published-package-seam)). **Read the current version and range from `package.json`** — the figures that used to be written here (`0.2.0-pre.N`, `^0.2.0-pre.26`) were three minor lines stale, because nothing checks a version quoted in prose.
 - **Anything requiring a new noy primitive** (e.g. a coordination join-handshake for late-joiners) is a **noy-db** change first, published, then consumed here — relocations/contract changes are choreographed across the seam, no-gap.
