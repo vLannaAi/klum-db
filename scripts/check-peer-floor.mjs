@@ -50,24 +50,75 @@ import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 
 const ROOT = resolve(fileURLToPath(import.meta.url), '../..')
-const DRY = process.argv.includes('--dry-run')
 const require = createRequire(import.meta.url)
 const semver = require('semver')
+
+// ── Plan (pure, exported for scripts/__tests__/check-peer-floor.test.ts) ─────
+//
+// Split out as pure functions purely so they can be tested. Everything below
+// installs, builds and typechecks, which a unit test cannot usefully do — so
+// this is the half where a regression would hide silently, and it is the half
+// under test. "The gate passed" and "the gate can still fail" are different
+// claims; the tests provoke it rather than observing it.
+//
+// Throws rather than exiting, so a caller decides what a bad range means. The
+// CLI below turns that back into the same ✗ + exit 1 it always printed.
+
+/** Lowest version each @noy-db peer range admits. Non-@noy-db peers are ignored. */
+export function computeFloors(pkg) {
+  const floors = {}
+  for (const [name, range] of Object.entries(pkg.peerDependencies ?? {})) {
+    if (!name.startsWith('@noy-db/')) continue
+    let min
+    try {
+      min = semver.minVersion(range)
+    } catch {
+      // semver THROWS on an unparseable range and RETURNS NULL on a
+      // well-formed range no version can satisfy (`<0.0.0`). Both are the same
+      // failure to a caller, and only the second was handled before — an
+      // unparseable range crashed with a stack trace instead of the message.
+      min = null
+    }
+    if (!min) throw new Error(`${name}: cannot compute a minimum version from "${range}"`)
+    floors[name] = min.version
+  }
+  return floors
+}
+
+/**
+ * The floors, as a pnpm.overrides block merged into the package.json TEXT.
+ * Merged rather than assigned: an existing overrides entry that is not a
+ * @noy-db peer must survive, or the check silently changes what it resolves.
+ */
+export function applyFloorOverrides(pkgText, floors) {
+  const mutated = JSON.parse(pkgText)
+  mutated.pnpm = {
+    ...(mutated.pnpm ?? {}),
+    overrides: { ...(mutated.pnpm?.overrides ?? {}), ...floors },
+  }
+  return JSON.stringify(mutated, null, 2) + '\n'
+}
+
+// ── CLI ─────────────────────────────────────────────────────────────────────
+//
+// Guarded so importing this module from a test does not install anything. Under
+// vitest process.argv[1] is vitest's own entry, so main() never runs there.
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+if (isMain) main()
+
+function main() {
+const DRY = process.argv.includes('--dry-run')
 
 const rootPath = join(ROOT, 'package.json')
 const rootOriginal = readFileSync(rootPath, 'utf8')
 const pkg = JSON.parse(rootOriginal)
 
-// ── Plan ────────────────────────────────────────────────────────────────────
-const floors = {}
-for (const [name, range] of Object.entries(pkg.peerDependencies ?? {})) {
-  if (!name.startsWith('@noy-db/')) continue
-  const min = semver.minVersion(range)
-  if (!min) {
-    console.error(`✗ ${name}: cannot compute a minimum version from "${range}"`)
-    process.exit(1)
-  }
-  floors[name] = min.version
+let floors
+try {
+  floors = computeFloors(pkg)
+} catch (e) {
+  console.error(`✗ ${e.message}`)
+  process.exit(1)
 }
 
 const optional = new Set(Object.keys(pkg.peerDependenciesMeta ?? {}))
@@ -96,9 +147,7 @@ const run = (cmd, args) =>
 
 const failures = []
 try {
-  const mutated = JSON.parse(rootOriginal)
-  mutated.pnpm = { ...(mutated.pnpm ?? {}), overrides: { ...(mutated.pnpm?.overrides ?? {}), ...floors } }
-  writeFileSync(rootPath, JSON.stringify(mutated, null, 2) + '\n')
+  writeFileSync(rootPath, applyFloorOverrides(rootOriginal, floors))
 
   console.log('── installing every @noy-db peer at its floor …')
   try {
@@ -145,3 +194,4 @@ if (failures.length) {
   process.exit(1)
 }
 console.log('✓ compiles against the oldest @noy-db/* versions every peer range admits')
+}
