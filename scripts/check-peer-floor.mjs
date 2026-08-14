@@ -80,6 +80,29 @@ export function computeFloors(pkg) {
       min = null
     }
     if (!min) throw new Error(`${name}: cannot compute a minimum version from "${range}"`)
+    // The third semver case, and the only one that fails SLOWLY. An unbounded
+    // range floors at 0.0.0 — semver reads "", "   ", "*" and "x" as `*`, and
+    // `<1.0.0` gets there too despite having an upper bound. No @noy-db package
+    // has ever published 0.0.0, so this neither throws nor returns null: it
+    // plans a check against a version that does not exist, and surfaces minutes
+    // later at the install step as "no matching version for @noy-db/x@0.0.0",
+    // which reads as a registry outage rather than a bad manifest.
+    //
+    // Detected by VALUE, not by matching the range text, because `<1.0.0` and
+    // `>=0.0.0` are unbounded below without looking like wildcards.
+    //
+    // The range is not malformed — it is unfalsifiable. An unbounded range
+    // promises every version, so there is no oldest one to check it against,
+    // and a guard that cannot fail on it should say so rather than invent a
+    // floor. Most plausible on the three OPTIONAL peers, where "*" gets written
+    // meaning "any".
+    if (min.version === '0.0.0') {
+      throw new Error(
+        `${name}: range "${range}" has no lower bound, so there is no floor to check it against. ` +
+          `An unbounded range promises every version, including ones that were never published. ` +
+          `Narrow it to the oldest version this package actually supports.`,
+      )
+    }
     floors[name] = min.version
   }
   return floors
