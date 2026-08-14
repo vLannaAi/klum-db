@@ -15,7 +15,7 @@ it('computes initial snapshot, updates on relevant change, single-flights, stops
   let n = 0
   const core = new CrossVaultLive<number>({
     subscribeToChanges: em.subscribe,
-    isRelevant: (e) => e.relevant === true,
+    isRelevant: (e) => (e as { relevant?: boolean }).relevant === true,
     compute: async () => { await tick(); return ++n },
     initialSnapshot: 0,
     debounceMs: 0,

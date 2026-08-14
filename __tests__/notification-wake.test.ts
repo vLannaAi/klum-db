@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { withWake } from '../src/notifications/wake.js'
 import type { WakeResult, WakeSender } from '../src/notifications/wake.js'
 import { DeviceRegistry } from '../src/notifications/devices.js'
-import type { DeviceRegistration } from '../src/notifications/devices.js'
+import type { DeviceEndpoint, DeviceRegistration } from '../src/notifications/devices.js'
 import type { NotificationIntent } from '../src/notifications/types.js'
 
 function fakeStore(seed: DeviceRegistration[] = []) {
@@ -51,7 +51,7 @@ describe('withWake', () => {
 
   it('wakes ONCE per intent with all recipients’ endpoints', async () => {
     const { registry } = await seeded()
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     await withWake(async () => {}, { registry, sender: { wake } })(INTENT)
     expect(wake).toHaveBeenCalledTimes(1)
     const tokens = wake.mock.calls[0]![0].map((e) => e.token).sort()
@@ -60,14 +60,14 @@ describe('withWake', () => {
 
   it('does not wake devices of actors who are not recipients', async () => {
     const { registry } = await seeded()
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     await withWake(async () => {}, { registry, sender: { wake } })(INTENT)
     expect(wake.mock.calls[0]![0].map((e) => e.token)).not.toContain('zoe-tok')
   })
 
   it('passes endpoints only — no actor, no content', async () => {
     const { registry } = await seeded()
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     await withWake(async () => {}, { registry, sender: { wake } })(INTENT)
     const endpoints = wake.mock.calls[0]![0]
     expect(endpoints).toHaveLength(2)
@@ -83,7 +83,7 @@ describe('withWake', () => {
     // A device exists, but for a NON-recipient — an implementation that
     // ignored the recipient filter would still call wake here.
     await registry.register({ actor: 'u_zoe', kind: 'fcm', token: 'zoe-tok' })
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     await withWake(async () => {}, { registry, sender: { wake } })(INTENT)
     expect(wake).not.toHaveBeenCalled()
   })
@@ -130,7 +130,7 @@ describe('withWake', () => {
 
   it('propagates a delivery failure and does not wake', async () => {
     const { registry } = await seeded()
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     const sink = withWake(
       async () => { throw new Error('write failed') },
       { registry, sender: { wake } },
@@ -165,7 +165,7 @@ describe('withWake', () => {
     const store = fakeStore()
     const registry = new DeviceRegistry(store, () => 1)
     vi.spyOn(store, 'list').mockRejectedValue(new Error('list down'))
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     const onWakeError = vi.fn()
     const sink = withWake(async () => {}, { registry, sender: { wake }, onWakeError })
     await expect(sink(INTENT)).resolves.toBeUndefined()

@@ -29,7 +29,7 @@ import {
 interface OldClient { id: string; fullName: string }
 interface NewClient { id: string; firstName: string; lastName: string }
 interface SimpleClient { id: string; name: string }
-interface SimpleClientWithNote { id: string; name: string; note?: string }
+interface SimpleClientWithNote { id: string; name: string; note?: string | undefined }
 
 // ─── Helpers: case (a) + (b) + (d) — split-name scenario ────────────────────
 

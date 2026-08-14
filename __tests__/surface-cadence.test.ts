@@ -44,7 +44,7 @@ function makeAgreedSurface(overrides: Partial<SurfaceRow> = {}): SurfaceRow {
 
 describe('isSurfaceDue — pure due-check (deterministic)', () => {
   it('never-synced agreed surface with cadence is due', () => {
-    const surface = makeAgreedSurface({ lastSyncAt: undefined, nextSyncDueAt: undefined })
+    const surface = makeAgreedSurface()
     expect(isSurfaceDue(surface, NOW)).toBe(true)
   })
 
@@ -73,22 +73,19 @@ describe('isSurfaceDue — pure due-check (deterministic)', () => {
   })
 
   it('proposed surface is NOT due (only agreed surfaces trigger)', () => {
-    const surface = makeAgreedSurface({ status: 'proposed', lastSyncAt: undefined })
+    const surface = makeAgreedSurface({ status: 'proposed' })
     expect(isSurfaceDue(surface, NOW)).toBe(false)
   })
 
   it('suspended surface is NOT due', () => {
-    const surface = makeAgreedSurface({ status: 'suspended', lastSyncAt: undefined })
+    const surface = makeAgreedSurface({ status: 'suspended' })
     expect(isSurfaceDue(surface, NOW)).toBe(false)
   })
 
   it('surface without cadenceMs is never due', () => {
-    const surface: SurfaceRow = {
-      ...makeAgreedSurface(),
-      cadenceMs: undefined,
-      lastSyncAt: undefined,
-      nextSyncDueAt: undefined,
-    }
+    // cadenceMs must be ABSENT, not undefined — so drop the key rather than
+    // assign over it. lastSyncAt / nextSyncDueAt are already absent by default.
+    const { cadenceMs: _noCadence, ...surface } = makeAgreedSurface()
     expect(isSurfaceDue(surface, NOW)).toBe(false)
   })
 })
@@ -97,14 +94,14 @@ describe('isSurfaceDue — pure due-check (deterministic)', () => {
 
 describe('listDueSurfaces — filter wrapper', () => {
   it('returns only due (agreed + cadence + overdue/never-synced) surfaces', () => {
-    const due = makeAgreedSurface({ id: 'due-1', lastSyncAt: undefined })
+    const due = makeAgreedSurface({ id: 'due-1' })
     const notDue = makeAgreedSurface({ id: 'not-due', lastSyncAt: NOW - 10_000, nextSyncDueAt: NOW + 50_000 })
     const proposed = makeAgreedSurface({ id: 'proposed-1', status: 'proposed' })
-    const noCadence: SurfaceRow = { ...makeAgreedSurface({ id: 'no-cadence' }), cadenceMs: undefined }
+    const { cadenceMs: _dropped, ...noCadence } = makeAgreedSurface({ id: 'no-cadence' })
 
     const result = listDueSurfaces([due, notDue, proposed, noCadence], NOW)
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('due-1')
+    expect(result[0]!.id).toBe('due-1')
   })
 
   it('returns empty array when no surfaces are due', () => {
@@ -120,7 +117,7 @@ describe('markSynced — stamps lastSyncAt + nextSyncDueAt in the SMV', () => {
     const db = await createNoydb({ store: toMemory(), user: 'op', encrypt: false })
     const smv = await StateManagementVault.open(db)
 
-    const surface = makeAgreedSurface({ lastSyncAt: undefined, nextSyncDueAt: undefined })
+    const surface = makeAgreedSurface()
     await smv.createSurface(surface)
 
     await markSynced(smv, surface.id, NOW)
@@ -134,7 +131,7 @@ describe('markSynced — stamps lastSyncAt + nextSyncDueAt in the SMV', () => {
     const db = await createNoydb({ store: toMemory(), user: 'op', encrypt: false })
     const smv = await StateManagementVault.open(db)
 
-    const surface = makeAgreedSurface({ lastSyncAt: undefined, nextSyncDueAt: undefined })
+    const surface = makeAgreedSurface()
     await smv.createSurface(surface)
 
     // Before markSynced: due (never synced)

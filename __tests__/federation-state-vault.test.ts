@@ -121,7 +121,7 @@ describe('StateManagementVault', () => {
     await sv.appendEvent({ type: 'group-opened', group: 'g' })
     const events = await sv.queryEvents().toArray()
     expect(events.length).toBe(2)
-    expect(events[0].id).not.toBe(events[1].id)
+    expect(events[0]!.id).not.toBe(events[1]!.id)
   })
 
   it('recordManifest stores a fingerprinted row keyed by template:version', async () => {
@@ -263,7 +263,7 @@ describe('deployment-events optional WORM hardening', () => {
     // bypassing appendEvent via direct vault access still hits the WORM guard.
     const stateVault = await db.openVault(STATE_VAULT_NAME)
     await expect(
-      stateVault.collection('deploymentEvents').put(ev.id, { ...ev, group: 'tampered' }),
+      stateVault.collection('deploymentEvents').put(ev!.id, { ...ev!, group: 'tampered' }),
     ).rejects.toBeInstanceOf(RecordLockedError)
   })
 })

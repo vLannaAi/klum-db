@@ -45,7 +45,7 @@
     "build": "tsup",
     "test": "vitest run",
     "lint": "eslint src/ && pnpm check:architecture",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json --noEmit",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:peer-floor": "node scripts/check-peer-floor.mjs"
   },

@@ -22,14 +22,14 @@ describe('stageAndValidate', () => {
       { clients: [rec('c1', { name: 'a' })] },
       { clients: [(b) => ({ ...b, name: String(b.name).toUpperCase() }), (b) => ({ ...b, id: 'WRONG' })] },
     )
-    expect(staged.clients[0].record).toEqual({ name: 'A', id: 'c1' }) // id re-injected, not 'WRONG'
+    expect(staged.clients?.[0]?.record).toEqual({ name: 'A', id: 'c1' }) // id re-injected, not 'WRONG'
   })
 
   it('passes through collections with no transform (additive)', async () => {
     const vault = await freshVault()
     vault.collection('clients')
     const staged = await stageAndValidate(vault, { clients: [rec('c1', { name: 'a' })] }, {})
-    expect(staged.clients[0].record).toEqual({ name: 'a', id: 'c1' })
+    expect(staged.clients?.[0]?.record).toEqual({ name: 'a', id: 'c1' })
   })
 
   it('throws MigrationTransformRequiredError when a record fails the receiver schema', async () => {

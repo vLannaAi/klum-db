@@ -163,7 +163,7 @@ describe('fleet migration — real coordinatedCutover across shards (#271)', () 
 
   it('rolloutSchema runs each shard cutover and transforms records in place', async () => {
     const store = memory()
-    const sharding = { keyOf: (r: { clientId: string }) => r.clientId, vaultTemplate: 'ct', autoCreate: true }
+    const sharding = { keyOf: (r: { clientId: string; [k: string]: unknown }) => r.clientId, vaultTemplate: 'ct', autoCreate: true }
 
     // Session 1 (v1): seed old-shape data + persist the schema baseline per shard.
     const db1 = await createNoydb({ store, user: 'op', secret: 'p' })

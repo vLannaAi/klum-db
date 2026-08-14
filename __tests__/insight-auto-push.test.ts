@@ -22,7 +22,7 @@ describe('InsightAutoPush', () => {
   })
 
   it('recomputes each distinct dirty shard once', async () => {
-    const recompute = vi.fn(async () => {})
+    const recompute = vi.fn(async (_partitionKey: string) => {})
     const ap = new InsightAutoPush(recompute, () => true)
     ap.noteWrite('acme', 'invoices')
     ap.noteWrite('globex', 'invoices')
@@ -39,7 +39,7 @@ describe('InsightAutoPush', () => {
     ap.noteWrite('acme', 'invoices')
     await expect(ap.whenSettled()).resolves.toBeUndefined()
     expect(onError).toHaveBeenCalledTimes(1)
-    expect(onError.mock.calls[0][1]).toBe('acme')
+    expect(onError.mock.calls[0]?.[1]).toBe('acme')
   })
 
   it('whenSettled resolves immediately when nothing is pending', async () => {
