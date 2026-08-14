@@ -40,9 +40,22 @@ on:
         required: false
         type: string
 
+# Under `workflow_call`, github.ref resolves to the CALLER's ref, so a bare
+# `peer-floor-${{ github.ref }}` group is shared with whatever else is running on
+# that ref. Concretely: a push to main touching package.json AND one of the
+# workflow files triggers this workflow directly and again through release.yml,
+# both on refs/heads/main — same group, and cancel-in-progress kills one of them.
+#
+# Keyed on inputs.ref so a called run is grouped by the ref it actually checks
+# out, and split by event so the release path never shares a group with a push.
+#
+# cancel-in-progress is scoped to pull_request deliberately. This job gates a
+# publish; a gate that something else can cancel is not a gate, and a cancelled
+# required job reads as flake rather than as the refusal it is. PR runs are the
+# only ones where cancelling a superseded run is a saving rather than a hazard.
 concurrency:
-  group: peer-floor-${{ github.ref }}
-  cancel-in-progress: true
+  group: peer-floor-${{ inputs.ref || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
