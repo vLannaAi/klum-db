@@ -10,6 +10,26 @@
 // hypothetical: #85 found `hasNoydbPodMagic` (hub 0.6.0-pre only) shipping
 // under a range that still advertised ^0.4.0 and ^0.5.0.
 //
+// The hub range has now been wrong three times, each attempt stronger than the
+// last. Worth knowing before anyone "restores" the old branches:
+//
+//   1. `^0.4.0-pre.1 || ^0.4.0 || ^0.5.0 || ^0.6.0-pre.0` — false in three of
+//      four branches. Nothing checked it.
+//   2. #85 narrowed it to `^0.6.0-pre.0` by reasoning about which MAJOR line
+//      the symbol appeared in. Published in 0.4.0-pre.5. Still wrong, by
+//      fourteen pre-releases.
+//   3. #87 narrowed it to `^0.6.0-pre.14` by COMPILING against the floor — this
+//      script. Checkable, and re-checked on every package.json edit and every
+//      release.
+//
+// The family rule is "widen a peer range by APPENDING", which assumes
+// compatibility only ever grows. It does not hold when upstream REMOVES a
+// symbol: hub 0.6.0-pre.14 deleted hasNoydbBundleMagic with no cross-version
+// successor, so the old branches had to go. Leaving them advertised converts an
+// install-time refusal — loud, at the right moment — into an undefined-is-not-a-
+// function at runtime in a consumer's app. Narrowing here is not a regression
+// from that rule; it is the case the rule does not cover.
+//
 // It COMPILES rather than greps, deliberately. In noy-db-to the equivalent bug
 // was `StoreLocator.register()` gaining a type parameter: the symbol existed at
 // the old floor and simply could not accept the argument, so a presence check
