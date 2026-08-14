@@ -179,7 +179,7 @@ describe('extractCrossVaultPartition', () => {
       await createNoydb({ store: destStore, user: 'u', secret: 'correct-horse-battery-staple' })
     ).openVault('dir-adopted')
     const adoptedEntities = (await dest.collection('entities').list())
-      .map((r: Record<string, unknown>) => r['id'] as string)
+      .map((r) => (r as Record<string, unknown>)['id'] as string)
       .sort()
     expect(adoptedEntities).toEqual(['e1', 'e2'])
   })

@@ -88,6 +88,11 @@ const baseCtx = {
   after: { riskRating: 'high' },
 }
 
+// The absent-actorRole case, as an OMITTED key rather than an explicit
+// `undefined` — under exactOptionalPropertyTypes those are different types, and
+// `actorRole?: string` admits only the former.
+const { actorRole: _unusedRole, ...baseCtxWithoutRole } = baseCtx
+
 describe('matchesRule', () => {
   it('matches when every axis agrees', () => {
     expect(matchesRule(RISK_RULE, baseCtx)).toBe(true)
@@ -103,7 +108,7 @@ describe('matchesRule', () => {
 
   it('rejects an actor role outside the rule, including an unknown role', () => {
     expect(matchesRule(RISK_RULE, { ...baseCtx, actorRole: 'clerk' })).toBe(false)
-    expect(matchesRule(RISK_RULE, { ...baseCtx, actorRole: undefined })).toBe(false)
+    expect(matchesRule(RISK_RULE, baseCtxWithoutRole)).toBe(false)
   })
 
   it('rejects when a field condition fails', () => {
@@ -116,7 +121,7 @@ describe('matchesRule', () => {
       collection: 'documents',
       recipients: { kind: 'actors', ids: ['u_ben'] },
     }
-    expect(matchesRule(open, { ...baseCtx, collection: 'documents', op: 'delete', actorRole: undefined })).toBe(true)
+    expect(matchesRule(open, { ...baseCtxWithoutRole, collection: 'documents', op: 'delete' })).toBe(true)
   })
 
   it('honours a vaults allowlist', () => {
@@ -239,7 +244,7 @@ describe('NotificationRuleEngine.evaluate', () => {
       recipients: { kind: 'actors', ids: ['u_ada', 'u_ben', 'u_ben'] },
     }
     const engine = new NotificationRuleEngine({ rules: [selfRule], sink: () => {} })
-    expect(engine.evaluate(writeEvent(), ROSTER)[0].recipients).toEqual(['u_ben'])
+    expect(engine.evaluate(writeEvent(), ROSTER)[0]!.recipients).toEqual(['u_ben'])
   })
 
   it('emits no intent when recipients resolve empty', () => {
@@ -257,7 +262,7 @@ describe('NotificationRuleEngine.evaluate', () => {
       rules: [{ ...RISK_RULE, severity: 'critical' }],
       sink: () => {},
     })
-    expect(engine.evaluate(writeEvent(), ROSTER)[0].severity).toBe('critical')
+    expect(engine.evaluate(writeEvent(), ROSTER)[0]!.severity).toBe('critical')
   })
 
   it('skips a malformed rule, reports it, and still evaluates its siblings', () => {
@@ -286,6 +291,6 @@ describe('NotificationRuleEngine.evaluate', () => {
     const engine = new NotificationRuleEngine({ rules: [open], sink: () => {} })
     const intents = engine.evaluate(writeEvent())
     expect(intents).toHaveLength(1)
-    expect(intents[0].actorRole).toBeUndefined()
+    expect(intents[0]!.actorRole).toBeUndefined()
   })
 })

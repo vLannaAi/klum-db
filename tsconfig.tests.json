@@ -1,0 +1,22 @@
+// Typecheck the TESTS.
+//
+// tsconfig.json is the BUILD config: `include: ["src"]` with `rootDir: "src"`,
+// which is correct for tsup's dts emit and is why it must stay that way. The
+// consequence was that `pnpm typecheck` compiled zero test files — vitest
+// transpiles without typechecking, so a type error anywhere in __tests__ was
+// invisible to every gate in the repo.
+//
+// Same strictness as src, deliberately. A lower bar for tests would be another
+// claim nothing checks: exactOptionalPropertyTypes and noUncheckedIndexedAccess
+// are exactly the flags that catch a test asserting on a shape the API does not
+// actually produce.
+//
+// rootDir widens to the repo root because this config emits nothing.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "__tests__", "scripts/__tests__"]
+}

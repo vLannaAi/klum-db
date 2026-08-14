@@ -108,22 +108,22 @@ describe('applyBroadcastLegs', () => {
       [{ id: 'i1', currencyCode: 'usd' }, { id: 'i2', currencyCode: 'eur' }],
       [leg],
     )
-    expect((out[0] as Record<string, unknown>).fx).toEqual({ id: 'usd', symbol: '$' })
-    expect((out[1] as Record<string, unknown>).fx).toEqual({ id: 'eur', symbol: '€' })
+    expect((out[0] as unknown as Record<string, unknown>).fx).toEqual({ id: 'usd', symbol: '$' })
+    expect((out[1] as unknown as Record<string, unknown>).fx).toEqual({ id: 'eur', symbol: '€' })
   })
 
   it('matches on a custom key', async () => {
     const src = fakeSource([{ code: 'usd', symbol: '$' }])
     const leg: BroadcastLeg = { field: 'currencyCode', as: 'fx', from: src, on: 'code', mode: 'warn' }
     const out = await applyBroadcastLegs([{ id: 'i1', currencyCode: 'usd' }], [leg])
-    expect((out[0] as Record<string, unknown>).fx).toEqual({ code: 'usd', symbol: '$' })
+    expect((out[0] as unknown as Record<string, unknown>).fx).toEqual({ code: 'usd', symbol: '$' })
   })
 
   it('attaches null on a miss', async () => {
     const src = fakeSource([{ id: 'usd' }])
     const leg: BroadcastLeg = { field: 'currencyCode', as: 'fx', from: src, on: 'id', mode: 'cascade' }
     const out = await applyBroadcastLegs([{ id: 'i1', currencyCode: 'gbp' }], [leg])
-    expect((out[0] as Record<string, unknown>).fx).toBeNull()
+    expect((out[0] as unknown as Record<string, unknown>).fx).toBeNull()
   })
 
   it('loads the source exactly once regardless of row count', async () => {
@@ -146,8 +146,8 @@ describe('applyBroadcastLegs', () => {
         { field: 'advisorId', as: 'advisor', from: adv, on: 'id', mode: 'cascade' },
       ],
     )
-    expect((out[0] as Record<string, unknown>).fx).toEqual({ id: 'usd', symbol: '$' })
-    expect((out[0] as Record<string, unknown>).advisor).toEqual({ id: 'a1', name: 'Dana' })
+    expect((out[0] as unknown as Record<string, unknown>).fx).toEqual({ id: 'usd', symbol: '$' })
+    expect((out[0] as unknown as Record<string, unknown>).advisor).toEqual({ id: 'a1', name: 'Dana' })
   })
 
   it('returns rows unchanged when there are no legs', async () => {
@@ -177,9 +177,9 @@ describe('crossShardJoin (co-partitioned)', () => {
       .toArray()
 
     expect(res.skippedVaults).toEqual([])
-    const byId = Object.fromEntries(res.results.map((r) => [(r as Invoice).id, r])) as Record<string, Record<string, unknown>>
-    expect((byId['i1'].customer as Customer).name).toBe('Acme Co')
-    expect((byId['i2'].customer as Customer).name).toBe('Globex')
+    const byId = Object.fromEntries(res.results.map((r) => [(r as Invoice).id, r])) as unknown as Record<string, Record<string, unknown>>
+    expect((byId['i1']!.customer as Customer).name).toBe('Acme Co')
+    expect((byId['i2']!.customer as Customer).name).toBe('Globex')
   })
 })
 
@@ -204,9 +204,9 @@ describe('broadcastJoin (dimension)', () => {
       .broadcastJoin('currencyCode', { as: 'fx', from: currencies })
       .toArray()
 
-    const byId = Object.fromEntries(res.results.map((r) => [(r as Invoice).id, r])) as Record<string, Record<string, unknown>>
-    expect((byId['i1'].fx as { symbol: string }).symbol).toBe('$')
-    expect((byId['i2'].fx as { symbol: string }).symbol).toBe('€')
+    const byId = Object.fromEntries(res.results.map((r) => [(r as Invoice).id, r])) as unknown as Record<string, Record<string, unknown>>
+    expect((byId['i1']!.fx as { symbol: string }).symbol).toBe('$')
+    expect((byId['i2']!.fx as { symbol: string }).symbol).toBe('€')
   })
 
   it('combines a co-partitioned join and a broadcast join', async () => {
@@ -225,7 +225,7 @@ describe('broadcastJoin (dimension)', () => {
       .broadcastJoin('currencyCode', { as: 'fx', from: currencies })
       .toArray()
 
-    const row = res.results[0] as Record<string, unknown>
+    const row = res.results[0] as unknown as Record<string, unknown>
     expect((row.customer as Customer).name).toBe('Acme Co')
     expect((row.fx as { symbol: string }).symbol).toBe('$')
   })
@@ -265,7 +265,7 @@ describe('crossShardJoin failure semantics', () => {
       .crossShardJoin('customerId', { as: 'customer' })
       .toArray()
     expect(res.results).toHaveLength(1)
-    expect((res.results[0] as Record<string, unknown>).customer).toBeNull()
+    expect((res.results[0] as unknown as Record<string, unknown>).customer).toBeNull()
   })
 })
 
@@ -283,7 +283,7 @@ describe('broadcastJoin miss', () => {
     const res = await firm.collection('invoices').query()
       .broadcastJoin('currencyCode', { as: 'fx', from: currencies, mode: 'cascade' })
       .toArray()
-    expect((res.results[0] as Record<string, unknown>).fx).toBeNull()
+    expect((res.results[0] as unknown as Record<string, unknown>).fx).toBeNull()
   })
 })
 
@@ -307,13 +307,13 @@ describe('joined cross-shard live surface (#14)', () => {
       .broadcastJoin('currencyCode', { as: 'fx', from: currencies })
       .live()
     await lq.ready
-    const row = lq.value.find((r) => (r as Invoice).id === 'i1') as Record<string, unknown>
+    const row = lq.value.find((r) => (r as Invoice).id === 'i1') as unknown as Record<string, unknown>
     expect((row.fx as { symbol: string }).symbol).toBe('$') // joined dimension present
 
     // a write to the LEFT collection triggers a recompute
     await firm.collection('invoices').put('i2', { id: 'i2', clientId: 'acme', customerId: 'c1', amount: 50, status: 'paid', currencyCode: 'usd' })
     await waitFor(() => lq.value.length === 2)
-    expect((lq.value.find((r) => (r as Invoice).id === 'i2') as Record<string, unknown>).fx).toMatchObject({ symbol: '$' })
+    expect((lq.value.find((r) => (r as Invoice).id === 'i2') as unknown as Record<string, unknown>).fx).toMatchObject({ symbol: '$' })
     lq.stop()
   })
 
@@ -325,7 +325,7 @@ describe('joined cross-shard live surface (#14)', () => {
 
     const lq = firm.collection('invoices').query().crossShardJoin('customerId', { as: 'customer' }).live()
     await lq.ready
-    expect(((lq.value[0] as Record<string, unknown>).customer as Customer).name).toBe('Acme Co')
+    expect(((lq.value[0] as unknown as Record<string, unknown>).customer as Customer).name).toBe('Acme Co')
     lq.stop()
   })
 })

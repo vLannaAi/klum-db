@@ -37,10 +37,10 @@ describe('NotificationRuleEngine.attach (#37)', () => {
 
     await h.clients.put('c1', { id: 'c1', riskRating: 'high' })
     expect(seen).toHaveLength(1)
-    expect(seen[0].ruleId).toBe('risk-escalation')
-    expect(seen[0].ref.collection).toBe('clients')
-    expect(seen[0].ref.recordId).toBe('c1')
-    expect(seen[0].recipients).toEqual(['u_ben'])
+    expect(seen[0]!.ruleId).toBe('risk-escalation')
+    expect(seen[0]!.ref.collection).toBe('clients')
+    expect(seen[0]!.ref.recordId).toBe('c1')
+    expect(seen[0]!.recipients).toEqual(['u_ben'])
     off()
   })
 
@@ -57,8 +57,8 @@ describe('NotificationRuleEngine.attach (#37)', () => {
     await h.clients.put('c1', { id: 'c1', riskRating: 'low' })
     await h.clients.put('c1', { id: 'c1', riskRating: 'high' })
     expect(seen).toHaveLength(1)
-    expect(seen[0].actorRole).toBe('advisor')
-    expect(seen[0].recipients).toEqual(['u_ben'])
+    expect(seen[0]!.actorRole).toBe('advisor')
+    expect(seen[0]!.recipients).toEqual(['u_ben'])
     off()
   })
 

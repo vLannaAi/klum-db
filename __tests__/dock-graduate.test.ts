@@ -32,8 +32,8 @@ describe('Lobby.graduate — foreign unit → sovereign vault', () => {
     const report = await lob.graduate(lob.dock(driver()), { vaultName: 'acme', template })
 
     expect(report.vaultName).toBe('acme')
-    expect(report.collections.clients.graduated).toBe(2)
-    expect(report.collections.invoices.graduated).toBe(1)
+    expect(report.collections.clients?.graduated).toBe(2)
+    expect(report.collections.invoices?.graduated).toBe(1)
     expect(report.event).toEqual({ type: 'unit-graduated', unitId: 'legacy-1', vault: 'acme' })
 
     // The records are readable via the REAL sovereign vault API.

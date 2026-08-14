@@ -6,6 +6,7 @@ import { createNoydb } from '@noy-db/hub'
 import { memoryStore } from './helpers/two-shard-group.js'
 import { createLobby } from '../src/index.js'
 import type { WakeResult, WakeSender } from '../src/notifications/wake.js'
+import type { DeviceEndpoint } from '../src/notifications/devices.js'
 import type { NotificationIntent } from '../src/notifications/types.js'
 
 const INTENT: NotificationIntent = {
@@ -49,14 +50,14 @@ describe('openNotifications + push wake (#39)', () => {
   })
 
   it('wakes the recipient’s registered endpoints after delivery', async () => {
-    const wake = vi.fn(async () => OK)
+    const wake = vi.fn(async (_endpoints: readonly DeviceEndpoint[]) => OK)
     const { handle } = await harness({ wake })
     await handle.devices.register({ actor: 'u_ben', kind: 'web-push', token: 'ben-tok' })
 
     await handle.sink(INTENT)
 
     expect(wake).toHaveBeenCalledTimes(1)
-    expect((wake.mock.calls[0]![0] as { token: string }[]).map((e) => e.token)).toEqual(['ben-tok'])
+    expect(wake.mock.calls[0]![0].map((e) => e.token)).toEqual(['ben-tok'])
     // Delivery still happened.
     expect(await handle.inbox.list({ recipient: 'u_ben', now: 2_000 })).toHaveLength(1)
   })
@@ -106,7 +107,7 @@ describe('openNotifications + push wake (#39)', () => {
     const { handle } = await harness({
       wake: async (endpoints) => ({
         delivered: 0,
-        failed: [{ endpointId: (endpoints as { endpointId: string }[])[0]!.endpointId, reason: 'gone', permanent: true }],
+        failed: [{ endpointId: endpoints[0]!.endpointId, reason: 'gone', permanent: true }],
       }),
     })
     const row = await handle.devices.register({ actor: 'u_ben', kind: 'web-push', token: 'tok' })
