@@ -38,7 +38,7 @@ klum depends on **published** `@noy-db` packages (never a workspace link, never 
 
 - **Runtime helpers:** `generateULID`, `sha256Hex`, plus the quorum/barrier primitives `isQuorum` / `runDrainBarrier` (added in #469).
 - **Error classes** (so consumers `instanceof` them from klum): `ValidationError`, `ReservedVaultNameError`, `VaultTemplateNotFoundError`, `CrossShardJoinError`, `UnknownShardError`, `ShardProvisioningError`, `DataResidencyError`, `NoAccessError`.
-- **Type-only** (erased at emit; klum cannot `instanceof` these): `Vault`, `Collection`, `Noydb`, `Query`, `LiveQuery`, `Operator`, `JoinStrategy`, `AggregateResult`/`AggregateSpec`/`LiveAggregation`, `ChangeEvent`, `IndexDef`, plus the new coordination port types `CoordinationProvider`/`WriterPresence`/`FenceState`/`DrainBarrierOptions`. And `Noydb.isClosed`.
+- **Type-only** (erased at emit; klum cannot `instanceof` these): `Vault`, `Collection`, `Noydb`, `Query`, `LiveQuery`, `Operator`, `JoinStrategy`, `ReduceResult`/`ReduceSpec`/`LiveReduction`, `ChangeEvent`, `IndexDef`, plus the new coordination port types `CoordinationProvider`/`WriterPresence`/`FenceState`/`DrainBarrierOptions`. And `Noydb.isClosed`.
 
 The cargo seam is **additive-only** — removing anything is a breaking change requiring a coordinated bump on both repos. klum also consumes `@noy-db/hub` (root + `/pod` + `/share-link`) and `@noy-db/as-xlsx` for the single-vault primitives it composes (the `.noydb` pod read/write, `extractPartition`, `decryptExtractedPartition`, the single-vault xlsx export).
 
