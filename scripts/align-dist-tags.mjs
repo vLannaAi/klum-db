@@ -131,7 +131,63 @@ function npmView(name) {
   }
 }
 
-function main() {
+/**
+ * Classify one read-back after a dist-tag write.
+ *
+ * ── WHY THIS IS NOT A PLAIN EQUALITY CHECK ──
+ *
+ * `npm view` is CDN-served, so a read taken immediately after a SUCCESSFUL
+ * write can still return the old value. noy-db's alignment job hit exactly
+ * this on the 0.6.0 cut: all 52 packages had written correctly, its immediate
+ * read-back reported all 52 failed, and the run went red instructing a human to
+ * run 52 `npm dist-tag add ... --otp=<code>` repairs for tags that needed none.
+ *
+ * The bug is not the read. It is collapsing "could not confirm" into "failed",
+ * which are OPPOSITE instructions: *check* versus *repair*.
+ *
+ * The write is the authoritative act — `npm dist-tag add` exits non-zero on a
+ * real failure and the caller throws on that. This read is CONFIRMATION, and an
+ * unconfirmed confirmation is not a failure.
+ *
+ * Three outcomes, deliberately distinct:
+ *
+ *   confirmed  — both tags on the target. Done.
+ *   stale      — @next still reads as the value it held BEFORE the write. That
+ *                is the CDN-lag signature exactly, and the write already
+ *                succeeded, so the instruction is CHECK, never REPAIR.
+ *   unexpected — some third value that is neither the target nor the previous.
+ *                Nobody has an innocent explanation for that; fail loudly.
+ */
+export function classifyReadback({ version, previousNext, tags }) {
+  if (!tags) return 'stale'
+  if (tags.next === version && tags.latest === version) return 'confirmed'
+  if (tags.latest !== version) return 'unexpected'
+  if (tags.next === previousNext) return 'stale'
+  return 'unexpected'
+}
+
+/**
+ * Re-read until the write is visible, or the attempts run out.
+ *
+ * Settling before re-checking is the other half of noy-db's fix. `sleep` and
+ * `read` are injected so the tests neither wait nor touch the network.
+ */
+export async function settleReadback(
+  { name, version, previousNext },
+  { read, sleep, attempts = 5, delayMs = 3000 },
+) {
+  let last = null
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) await sleep(delayMs)
+    last = read(name)
+    const verdict = classifyReadback({ version, previousNext, tags: last })
+    if (verdict === 'confirmed') return { verdict, tags: last, attempts: i + 1 }
+    if (verdict === 'unexpected') return { verdict, tags: last, attempts: i + 1 }
+  }
+  return { verdict: 'stale', tags: last, attempts }
+}
+
+async function main() {
   const apply = process.argv.includes('--apply')
   const pkgs = publishablePackages()
   const { actions, skipped, refusals } = planAlignment(pkgs, readDistTags(pkgs.map((p) => p.name)))
@@ -154,21 +210,34 @@ function main() {
     execFileSync('npm', ['dist-tag', 'add', `${a.name}@${a.version}`, 'next'], { stdio: 'inherit' })
   }
 
-  // A zero exit is not evidence the tag moved. Re-read the registry.
-  const after = readDistTags(pkgs.map((p) => p.name))
+  // A zero exit is not evidence the tag moved — but neither is one stale read
+  // evidence that it did not. Settle, then classify. See classifyReadback.
   const summary = []
   let bad = 0
-  for (const { name, version } of pkgs) {
-    const t = after[name]
-    const ok = t?.next === version && t?.latest === version
-    console.log(`  ${ok ? '✓' : '✗'} ${name}: latest=${t?.latest} next=${t?.next}`)
-    summary.push(`- ${ok ? '✓' : '⚠️'} \`${name}\` — latest=\`${t?.latest}\` next=\`${t?.next}\``)
-    if (!ok) {
-      // The repair needs an OTP from a workstation — CI cannot supply one — so
-      // hand over the exact command rather than leaving whoever reads this to
-      // reconstruct it under time pressure.
-      summary.push(`    recover with: \`npm dist-tag add ${name}@${version} next --otp=<code>\``)
+  let unconfirmed = 0
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+  for (const a of actions) {
+    const { verdict, tags, attempts } = await settleReadback(
+      { name: a.name, version: a.version, previousNext: a.from === '(none)' ? undefined : a.from },
+      { read: (n) => readDistTags([n])[n], sleep },
+    )
+    const mark = verdict === 'confirmed' ? '✓' : verdict === 'stale' ? '…' : '✗'
+    console.log(`  ${mark} ${a.name}: latest=${tags?.latest} next=${tags?.next} (${verdict}, ${attempts} read(s))`)
+
+    if (verdict === 'confirmed') {
+      summary.push(`- ✓ \`${a.name}\` — latest=\`${tags?.latest}\` next=\`${tags?.next}\``)
+    } else if (verdict === 'stale') {
+      // NOT a failure, and NOT a repair instruction. The write succeeded; the
+      // registry read has not caught up. Telling someone to re-run the write
+      // here is the harm that made noy-db's green release look red.
+      unconfirmed++
+      summary.push(`- … \`${a.name}\` — write SUCCEEDED, read-back not yet visible (CDN lag).`)
+      summary.push(`    **No repair needed.** Confirm when convenient: \`npm view ${a.name} dist-tags\``)
+    } else {
       bad++
+      summary.push(`- ⚠️ \`${a.name}\` — unexpected state: latest=\`${tags?.latest}\` next=\`${tags?.next}\``)
+      summary.push(`    recover with: \`npm dist-tag add ${a.name}@${a.version} next --otp=<code>\``)
     }
   }
 
@@ -177,8 +246,14 @@ function main() {
   }
 
   if (bad) {
-    console.error(`\n✗ ${bad} package(s) did not land as expected.`)
+    console.error(`\n✗ ${bad} package(s) in an unexpected state.`)
     process.exit(1)
+  }
+  if (unconfirmed) {
+    // Exit 0 deliberately. The authoritative act succeeded; a red run here would
+    // train people to ignore this job on the one day it matters.
+    console.log(`\n… ${unconfirmed} write(s) succeeded but not yet visible. No action needed.`)
+    process.exit(0)
   }
   console.log('\n✓ @latest and @next both on the stable')
 }

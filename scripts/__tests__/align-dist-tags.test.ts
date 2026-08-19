@@ -149,3 +149,77 @@ describe('readDistTags', () => {
     expect(out).toEqual({ [PKG]: { latest: '0.4.0', next: '0.4.0' } })
   })
 })
+
+// ── Read-back classification ────────────────────────────────────────────
+//
+// Added after noy-db's 0.6.0 alignment job reported all 52 packages failed
+// while all 52 had succeeded: `npm view` is CDN-served, so a read taken
+// immediately after a successful write can still return the old value. The
+// original version of THIS script had the identical bug — one immediate read,
+// and a stale value produced `npm dist-tag add ... --otp=<code>` repair
+// instructions for a tag that needed no repair.
+//
+// The defect is not the read. It is collapsing "could not confirm" into
+// "failed", which are opposite instructions: check versus repair.
+import { classifyReadback, settleReadback } from '../align-dist-tags.mjs'
+
+describe('classifyReadback', () => {
+  const base = { version: '0.4.0', previousNext: '0.4.0-pre.10' }
+
+  it('confirms when both tags are on the target', () => {
+    expect(classifyReadback({ ...base, tags: { latest: '0.4.0', next: '0.4.0' } })).toBe('confirmed')
+  })
+
+  // THE REGRESSION THIS FILE EXISTS FOR. A successful write whose read-back
+  // still shows the previous @next is CDN lag, not failure.
+  it('calls a read still showing the PREVIOUS @next stale, not failed', () => {
+    expect(classifyReadback({ ...base, tags: { latest: '0.4.0', next: '0.4.0-pre.10' } })).toBe('stale')
+  })
+
+  it('treats an unreadable registry response as stale rather than failed', () => {
+    expect(classifyReadback({ ...base, tags: null })).toBe('stale')
+  })
+
+  // @latest is written by the PUBLISH, not by this script. If it is not on the
+  // target, something outside this job's control is wrong — that is not lag.
+  it('flags a wrong @latest as unexpected, not stale', () => {
+    expect(classifyReadback({ ...base, tags: { latest: '0.3.9', next: '0.4.0-pre.10' } })).toBe('unexpected')
+  })
+
+  it('flags a third value nobody can explain as unexpected', () => {
+    expect(classifyReadback({ ...base, tags: { latest: '0.4.0', next: '0.1.2' } })).toBe('unexpected')
+  })
+
+  it('treats a first-ever @next (no previous) that reads back wrong as unexpected', () => {
+    expect(classifyReadback({ version: '0.4.0', previousNext: undefined, tags: { latest: '0.4.0', next: '0.1.2' } }))
+      .toBe('unexpected')
+  })
+})
+
+describe('settleReadback', () => {
+  const noSleep = async () => {}
+  const target = { name: '@klum-db/lobby', version: '0.4.0', previousNext: '0.4.0-pre.10' }
+
+  it('returns as soon as the write becomes visible, without burning attempts', async () => {
+    let n = 0
+    const read = () => (++n < 3 ? { latest: '0.4.0', next: '0.4.0-pre.10' } : { latest: '0.4.0', next: '0.4.0' })
+    const r = await settleReadback(target, { read, sleep: noSleep, attempts: 5, delayMs: 0 })
+    expect(r.verdict).toBe('confirmed')
+    expect(r.attempts).toBe(3)
+  })
+
+  it('gives up as STALE, never as failed, when lag outlasts the attempts', async () => {
+    const read = () => ({ latest: '0.4.0', next: '0.4.0-pre.10' })
+    const r = await settleReadback(target, { read, sleep: noSleep, attempts: 3, delayMs: 0 })
+    expect(r.verdict).toBe('stale')
+    expect(r.attempts).toBe(3)
+  })
+
+  it('short-circuits immediately on an unexpected state rather than retrying it', async () => {
+    let n = 0
+    const read = () => { n++; return { latest: '0.4.0', next: '0.9.9' } }
+    const r = await settleReadback(target, { read, sleep: noSleep, attempts: 5, delayMs: 0 })
+    expect(r.verdict).toBe('unexpected')
+    expect(n).toBe(1)
+  })
+})
