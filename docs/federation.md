@@ -238,14 +238,14 @@ ShardedQuery.fanoutReduce(spec)                   (vault-group.ts:679)
 
 central: mergePartials(spec, partials)             (partial-reduce.ts:49)
          finalizePartial(spec, merged)             (partial-reduce.ts:61)
-  → AggregateResult<Spec>
+  → ReduceResult<Spec>
 ```
 
 **Central-reduce fallback** (join legs present, or any reducer lacks `merge`):
 
 ```
 fanoutRecords() → union of all shard rows
-reduceRecords(rows, spec) → AggregateResult<Spec>
+reduceRecords(rows, spec) → ReduceResult<Spec>
 ```
 
 `.aggregate(spec).live(options?)` always uses central-reduce (`aggregate-across.ts:69`).
