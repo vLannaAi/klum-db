@@ -1,0 +1,128 @@
+name: Dist-tag probe
+
+# Does `npm dist-tag` work from CI with the NPM_TOKEN automation token, or does
+# it genuinely require an interactive 2FA OTP?
+#
+# WHY THIS EXISTS. The family record states that `npm dist-tag` and
+# `npm deprecate` are account-changing writes needing `--otp=<code>`, which CI
+# can never supply. That was measured on the LOCAL `~/.npmrc` path — a different
+# credential from the NPM_TOKEN automation token this repo publishes with, and
+# automation tokens exist precisely to bypass 2FA for CI. So the claim is
+# established for one path and assumed for the other, which is the failure shape
+# this family keeps catching.
+#
+# It matters because a 0.6.0 stable would put `@next` BEHIND `@latest` on every
+# family package (0.6.0 > 0.6.0-pre.24) — the "lying tag" condition. The proposed
+# remedy points BOTH tags at the stable, which needs a second dist-tag operation
+# per package. Whether that can run in CI decides the design for ~75 packages.
+#
+# THE PROBE IS A NO-OP BY CONSTRUCTION. It re-asserts an existing tag to the
+# value it already holds, so a success changes nothing and a failure changes
+# nothing. It is deliberately manual-only: no push, pull_request or release
+# trigger, and it refuses to run unless `confirm` is typed exactly.
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to probe'
+        required: true
+        default: '@klum-db/lobby'
+      version:
+        description: 'Version the tag ALREADY points at (this must be a no-op)'
+        required: true
+      tag:
+        description: 'Dist-tag to re-assert'
+        required: true
+        default: 'next'
+      confirm:
+        description: 'Type PROBE to proceed'
+        required: true
+
+concurrency:
+  group: dist-tag-probe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse without explicit confirmation
+        if: inputs.confirm != 'PROBE'
+        run: |
+          echo "::error::confirm must be exactly PROBE. Got: '${{ inputs.confirm }}'"
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Assert the probe is genuinely a no-op BEFORE writing
+        id: before
+        run: |
+          set -euo pipefail
+          CURRENT=$(npm view "${{ inputs.package }}" "dist-tags.${{ inputs.tag }}" 2>/dev/null || echo "MISSING")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "current $(printf '%s' "${{ inputs.tag }}") = $CURRENT"
+          if [ "$CURRENT" != "${{ inputs.version }}" ]; then
+            echo "::error::NOT a no-op. '${{ inputs.tag }}' points at '$CURRENT', not '${{ inputs.version }}'. Refusing."
+            exit 1
+          fi
+
+      - name: whoami (does the automation token authenticate at all?)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # npm reports write-path auth failures as 404, never 401, so establish
+          # identity first — otherwise a later 404 is ambiguous between "bad
+          # credential" and "no such package".
+          npm whoami || { echo "::error::NPM_TOKEN does not authenticate."; exit 1; }
+
+      - name: THE PROBE — re-assert the tag to its current value
+        id: probe
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -x
+          npm dist-tag add "${{ inputs.package }}@${{ inputs.version }}" "${{ inputs.tag }}"
+
+      - name: Verify against the REGISTRY, not the exit code
+        id: verify
+        run: |
+          set -euo pipefail
+          # A zero exit is not evidence the tag moved. Ask the registry.
+          AFTER=$(npm view "${{ inputs.package }}" "dist-tags.${{ inputs.tag }}" 2>/dev/null || echo "MISSING")
+          echo "after=$AFTER" >> "$GITHUB_OUTPUT"
+          echo "after $(printf '%s' "${{ inputs.tag }}") = $AFTER"
+          if [ "$AFTER" != "${{ inputs.version }}" ]; then
+            echo "::error::Tag is now '$AFTER', expected '${{ inputs.version }}'. State changed unexpectedly."
+            exit 1
+          fi
+
+      - name: Report
+        run: |
+          {
+            echo "## Dist-tag probe"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| package | \`${{ inputs.package }}\` |"
+            echo "| tag | \`${{ inputs.tag }}\` |"
+            echo "| before | \`${{ steps.before.outputs.current }}\` |"
+            echo "| after | \`${{ steps.verify.outputs.after }}\` |"
+            echo "| \`npm dist-tag add\` outcome | **${{ steps.probe.outcome }}** |"
+            echo
+            if [ "${{ steps.probe.outcome }}" = "success" ]; then
+              echo "✅ **\`npm dist-tag\` WORKS from CI with an automation token — no OTP required.**"
+              echo "The family record's \"cannot be automated\" claim is true of the local \`~/.npmrc\`"
+              echo "path only, and does not hold for the CI path."
+            else
+              echo "❌ **\`npm dist-tag add\` FAILED from CI.** See the step log for the error."
+              echo "If it is a 404, that is npm's write-path auth failure mode, not a missing package —"
+              echo "\`npm whoami\` passed above, so the token authenticates but may lack the right grant."
+            fi
+            echo
+            echo "Tag value is unchanged either way; this probe re-asserts an existing value."
+          } >> "$GITHUB_STEP_SUMMARY"
