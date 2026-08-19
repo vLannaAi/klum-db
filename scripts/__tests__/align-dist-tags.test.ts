@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // @ts-expect-error — .mjs with no type declarations; this repo typechecks src/ only.
-import { publishablePackages, planAlignment, readDistTags } from '../align-dist-tags.mjs'
+import { publishablePackages, planAlignment, readDistTags, classifyReadback, settleReadback } from '../align-dist-tags.mjs'
 
 // What these tests cover, and what they CANNOT.
 //
@@ -161,7 +161,6 @@ describe('readDistTags', () => {
 //
 // The defect is not the read. It is collapsing "could not confirm" into
 // "failed", which are opposite instructions: check versus repair.
-import { classifyReadback, settleReadback } from '../align-dist-tags.mjs'
 
 describe('classifyReadback', () => {
   const base = { version: '0.4.0', previousNext: '0.4.0-pre.10' }
