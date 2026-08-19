@@ -18,7 +18,13 @@ name: Peer floor
 # Checks all five @noy-db peers including the three optional ones. "Optional"
 # means the consumer may omit it, not that the range may be wrong.
 #
-# Scoped to package.json edits — the only place a range can change.
+# Scoped to package.json AND src/** edits. The manifest is not the only place a
+# range can change: a SOURCE edit falsifies a range just as effectively, by making
+# the code need a symbol the floor does not have, and it touches no manifest. Proven
+# here — KeyringTamperedError is absent at this repo's declared floor (0.6.0-pre.14)
+# and present from 0.6.0-pre.21, so one import would make ^0.6.0-pre.14 false with
+# nothing for a manifest-only filter to see. Found in noy-db-ui, whose #1021 subpath
+# migration broke its build at its own floor on a source-only PR.
 #
 # Also exposed as `workflow_call` so release.yml can gate a publish on it. That
 # path is not redundant with the push/pull_request triggers: those are scoped to
@@ -28,10 +34,10 @@ name: Peer floor
 
 on:
   pull_request:
-    paths: ['package.json', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
+    paths: ['package.json', 'src/**', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
   push:
     branches: [main]
-    paths: ['package.json', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
+    paths: ['package.json', 'src/**', 'scripts/check-peer-floor.mjs', '.github/workflows/peer-floor.yml']
   workflow_dispatch:
   workflow_call:
     inputs:
