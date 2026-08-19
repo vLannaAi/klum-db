@@ -328,3 +328,85 @@ jobs:
           echo "- npm dist-tag: \`${{ steps.dist_tag.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Provenance: enabled (look for the ✓ on https://www.npmjs.com/package/@klum-db/lobby)" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Not a gate: align @next onto a STABLE ────────────────────────────
+  #
+  # `publish` routes to exactly ONE dist-tag. So cutting 0.4.0 to @latest while
+  # @next sits at 0.4.0-pre.10 leaves the in-flight tag pointing BEHIND the
+  # stable one — the "lying tag" state the family sweep flags. Measured before
+  # this job existed: semver.gt('0.4.0', '0.4.0-pre.10') is true, so the stable
+  # cut produces the defect BY ITSELF, with no mistake by anyone.
+  #
+  # This repo is the reason that matters. @klum-db/lobby@latest has been stuck
+  # at 0.2.0-pre.26 — the family's oldest wound — and the stable is what finally
+  # clears it. Creating a fresh tag defect in the same operation would be a poor
+  # trade.
+  #
+  # The repair is an extraordinary alignment: both tags on the stable. It is
+  # self-correcting — the next pre-release moves @next forward again.
+  #
+  # STABLE ONLY. A pre-release already sets @next through the publish and must
+  # never touch @latest; the `prerelease == false` guard keeps the paths apart.
+  #
+  # NOT continue-on-error, and this is a deliberate DEPARTURE from the sibling
+  # script it was ported alongside. noy-db's repoint-pre-only-latest.mjs never
+  # fails its caller, which is right there — a stale `latest` on a pre-only
+  # package is cosmetic, and reddening a release over it trains people to stop
+  # reading the log. It is wrong here: this delivers a stable, and a half-applied
+  # dist-tag state is worse than a loud failure. It is exactly the state a human
+  # then has to repair by hand with an OTP.
+  #
+  # `npm dist-tag add` needs no OTP from CI with an automation token — probed in
+  # this repo, run 32260394291. That is true of THIS path only: the same command
+  # from a local ~/.npmrc does prompt, and `npm deprecate` was NOT probed and
+  # must not be assumed automatable on the strength of it.
+  #
+  # Ported from noy-db-ui#38.
+  align-dist-tags:
+    name: Align @next onto the stable
+    needs: publish
+    if: github.event_name == 'release' && github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      # npm reports write-path auth failures as 404, never 401 — a dist-tag
+      # write against a dead token reads as "package does not exist". Establish
+      # identity first so that failure is not misread as a naming problem.
+      - name: Check npm auth (whoami)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm whoami
+
+      # Plan first, writing nothing. Refuses unless @latest ALREADY points at
+      # this version — a blind `dist-tag add` is correct when the stable
+      # published and catastrophic when the version is wrong.
+      - name: Plan the alignment
+        run: node scripts/align-dist-tags.mjs
+
+      - name: Apply, then verify against the registry
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node scripts/align-dist-tags.mjs --apply
+
+      - name: Report a failure loudly
+        if: failure()
+        run: |
+          {
+            echo "### ⚠️ dist-tag alignment FAILED"
+            echo ""
+            echo "The publish succeeded and cannot be undone, so \`@latest\` is on the stable"
+            echo "while \`@next\` may still trail it. Check the step log, then repair from a"
+            echo "workstation — CI cannot supply an OTP:"
+            echo ""
+            echo '```'
+            echo "npm dist-tag add @klum-db/lobby@${{ github.event.release.tag_name }} next --otp=<code>"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
